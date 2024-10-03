@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>입출고 및 재고 관리 페이지</title>
-    <!-- 뷰포트 메타 태그 최적화 -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- 뷰포트 메타 태그 수정 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap">
     <style>
         body {
@@ -52,7 +52,8 @@
             font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
             font-weight: bold;
             margin-bottom: 10px;
-            white-space: nowrap; /* 버튼 텍스트가 세로로 표시되지 않도록 설정 */
+            /* white-space: nowrap; 제거 */
+            text-align: center;
         }
         .nav-buttons button:hover {
             background-color: #d84315;
@@ -67,7 +68,7 @@
             margin-bottom: 5px;
             font-weight: bold;
             font-size: 18px;
-            white-space: nowrap; /* 레이블 텍스트가 세로로 표시되지 않도록 설정 */
+            /* white-space: nowrap; 제거 */
         }
         select, input[type="text"], input[type="number"] {
             padding: 14px;
@@ -79,9 +80,9 @@
             box-sizing: border-box;
             font-size: 18px;
             font-weight: bold;
-            white-space: nowrap; /* 입력 필드 텍스트가 세로로 표시되지 않도록 설정 */
-            overflow: hidden; /* 넘치는 텍스트 숨김 */
-            text-overflow: ellipsis; /* 넘치는 텍스트는 ...으로 표시 */
+            /* white-space: nowrap; 제거 */
+            /* overflow: hidden; 제거 */
+            /* text-overflow: ellipsis; 제거 */
         }
         textarea {
             width: 100%;
@@ -94,9 +95,9 @@
             margin-bottom: 10px;
             font-size: 18px;
             font-weight: bold;
-            white-space: nowrap; /* 텍스트가 세로로 표시되지 않도록 설정 */
-            overflow: hidden; /* 넘치는 텍스트 숨김 */
-            text-overflow: ellipsis; /* 넘치는 텍스트는 ...으로 표시 */
+            /* white-space: nowrap; 제거 */
+            /* overflow: hidden; 제거 */
+            /* text-overflow: ellipsis; 제거 */
         }
         .buttons {
             display: flex;
@@ -117,7 +118,8 @@
             box-sizing: border-box;
             font-weight: bold;
             margin-bottom: 10px;
-            white-space: nowrap; /* 버튼 텍스트가 세로로 표시되지 않도록 설정 */
+            /* white-space: nowrap; 제거 */
+            text-align: center;
         }
         button.action-button:hover {
             background-color: #d84315;
@@ -146,6 +148,7 @@
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
+            overflow-x: auto;
         }
         th, td {
             border: 1px solid #ddd;
@@ -154,9 +157,9 @@
             color: #333333;
             font-size: 18px;
             font-weight: bold;
-            white-space: nowrap; /* 텍스트가 세로로 표시되지 않도록 설정 */
-            overflow: hidden; /* 넘치는 텍스트 숨김 */
-            text-overflow: ellipsis; /* 넘치는 텍스트는 ...으로 표시 */
+            /* white-space: nowrap; 제거 */
+            /* overflow: hidden; 제거 */
+            /* text-overflow: ellipsis; 제거 */
         }
         th {
             background-color: #8bc34a;
@@ -189,7 +192,8 @@
             font-weight: bold;
             width: 100%;
             box-sizing: border-box;
-            white-space: nowrap; /* 버튼 텍스트가 세로로 표시되지 않도록 설정 */
+            /* white-space: nowrap; 제거 */
+            text-align: center;
         }
         button#clear-data:hover {
             background-color: #d84315;
@@ -288,7 +292,7 @@
             const day = date.getDate();
             let hours = date.getHours();
             const minutes = date.getMinutes().toString().padStart(2, '0');
-            // 24시간 형식 사용, 필요 시 12시간 형식으로 변경 가능
+            // 24시간 형식 사용
             return `${month}/${day} ${hours}:${minutes}`;
         }
 
@@ -586,23 +590,25 @@
             </table>
 
             <h3 class="record-table">입출고 기록 내역</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>이름</th>
-                        <th>1차 분류</th>
-                        <th>매트 종류</th>
-                        <th>색상</th>
-                        <th>수량</th>
-                        <th>입출고</th>
-                        <th>비고</th>
-                        <th>작성시간</th> <!-- 작성시간 열 추가 -->
-                    </tr>
-                </thead>
-                <tbody id="admin-table-body">
-                    <!-- 데이터가 여기에 동적으로 추가될 것임 -->
-                </tbody>
-            </table>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>이름</th>
+                            <th>1차 분류</th>
+                            <th>매트 종류</th>
+                            <th>색상</th>
+                            <th>수량</th>
+                            <th>입출고</th>
+                            <th>비고</th>
+                            <th>작성시간</th> <!-- 작성시간 열 추가 -->
+                        </tr>
+                    </thead>
+                    <tbody id="admin-table-body">
+                        <!-- 데이터가 여기에 동적으로 추가될 것임 -->
+                    </tbody>
+                </table>
+            </div>
 
             <button id="clear-data" onclick="clearData()">초기화</button>
         </div>
