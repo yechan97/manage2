@@ -254,7 +254,7 @@
         const database = firebase.database();
 
         const matMapping = {
-            "일반": "",
+            "정상": "",
             "리퍼브": " R",
             "0.5t": " 0.5T"
         };
@@ -504,7 +504,7 @@
             <h1>입출고 페이지</h1>
 
             <div class="form-group">
-                <label for="name-select">기사 이름:</label>
+                <label for="name-select">성명:</label>
                 <select id="name-select" onchange="toggleCustomInput(this.value)">
                     <option>김수재</option>
                     <option>문경훈</option>
@@ -524,7 +524,7 @@
             <div class="form-group">
                 <label for="mat-type">1차 분류:</label>
                 <select id="mat-type">
-                    <option>일반</option>
+                    <option>정상</option>
                     <option>리퍼브</option>
                     <option>0.5t</option>
                 </select>
