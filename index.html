@@ -36,7 +36,7 @@
             font-size: 24px;
             font-weight: bold;
         }
-        /* 입출고 페이지 헤더: 파스텔톤 파란색 */
+        /* 토리매트 입/출고 헤더: 파스텔톤 파란색 */
         .input-header {
             background-color: #a0c4ff; /* 파스텔 파란색 */
         }
@@ -309,7 +309,7 @@
         const database = firebase.database();
 
         const matMapping = {
-            "일반": "",
+            "정상": "",
             "리퍼브": " R",
             "0.5t": " 0.5T"
         };
@@ -443,7 +443,7 @@
 
         function authenticateAdmin() {
             const password = prompt("비밀번호를 입력하세요:");
-            if (password === "1515") { // 실제 비밀번호는 환경 변수로 관리하는 것이 좋습니다.
+            if (password === "9998") { // 실제 비밀번호는 환경 변수로 관리하는 것이 좋습니다.
                 showSection('admin-section');
             } else {
                 alert("비밀번호가 올바르지 않습니다.");
@@ -570,16 +570,16 @@
     <div class="container">
         <!-- Navigation Buttons -->
         <div class="nav-buttons">
-            <button onclick="showSection('input-section')">입출고 페이지</button>
+            <button onclick="showSection('input-section')">토리매트 입/출고</button>
             <button onclick="authenticateAdmin()">재고 관리 페이지</button>
         </div>
 
         <!-- Input Section -->
         <div id="input-section">
-            <h1 class="input-header">입출고 페이지</h1>
+            <h1 class="input-header">토리매트 입/출고</h1>
 
             <div class="form-group">
-                <label for="name-select">기사 이름:</label>
+                <label for="name-select">성명:</label>
                 <select id="name-select" onchange="toggleCustomInput(this.value)">
                     <option>김수재</option>
                     <option>문경훈</option>
@@ -597,9 +597,9 @@
             </div>
 
             <div class="form-group">
-                <label for="mat-type">1차 분류:</label>
+                <label for="mat-type">구분:</label>
                 <select id="mat-type">
-                    <option>일반</option>
+                    <option>정상</option>
                     <option>리퍼브</option>
                     <option>0.5t</option>
                 </select>
@@ -671,7 +671,7 @@
                     <thead>
                         <tr>
                             <th>이름</th>
-                            <th>1차 분류</th>
+                            <th>구분</th>
                             <th>매트 종류</th>
                             <th>색상</th>
                             <th>수량</th>
