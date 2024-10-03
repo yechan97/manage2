@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>입출고 및 재고 관리 페이지</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap">
+    <style>
+        body {
+            font-family: 'Gowun Dodum', sans-serif;
+            background-color: #f2f2f2;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            width: 90%;
+            max-width: 800px;
+            margin: auto;
+            background: #ffffff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            padding: 10px;
+            background-color: #6a9fb5;
+            color: #ffffff;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        /* Navigation Styles */
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .nav-buttons button {
+            padding: 10px 20px;
+            background-color: #ff7043;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 48%;
+            box-sizing: border-box;
+        }
+        .nav-buttons button:hover {
+            background-color: #d84315;
+        }
+        /* Form Styles */
+        .form-group {
+            display: flex;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        label {
+            margin-bottom: 5px;
+            font-weight: bold;
+            width: 100%;
+        }
+        select, input[type="text"], input[type="number"] {
+            padding: 12px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            font-family: 'Gowun Dodum', sans-serif;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        textarea {
+            width: 100%;
+            height: 60px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            resize: none;
+            font-family: 'Gowun Dodum', sans-serif;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        .buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        button.action-button {
+            padding: 15px 25px;
+            background-color: #ff7043;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 18px;
+            font-family: 'Gowun Dodum', sans-serif;
+            width: 48%;
+            box-sizing: border-box;
+        }
+        button.action-button:hover {
+            background-color: #d84315;
+        }
+        .recent-entries h3 {
+            text-align: center;
+            background-color: #8bc34a;
+            padding: 15px;
+            border-radius: 5px;
+            color: white;
+            font-size: 20px;
+            font-family: 'Gowun Dodum', sans-serif;
+        }
+        .entry {
+            background: #e8f5e9;
+            margin: 10px 0;
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 5px;
+        }
+        /* Admin Page Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+            color: #333333;
+        }
+        th {
+            background-color: #8bc34a;
+            color: #ffffff;
+        }
+        .total-cell {
+            background-color: #c5e1a5;
+            font-weight: bold;
+            color: #33691e;
+        }
+        .record-table h3 {
+            text-align: center;
+            background-color: #8bc34a;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        button#clear-data {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #ff7043;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button#clear-data:hover {
+            background-color: #d84315;
+        }
+        /* Hide sections */
+        .hidden {
+            display: none;
+        }
+    </style>
+    
+    <!-- Firebase SDK 추가 -->
+    <script type="module">
+        // Firebase SDK 불러오기
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getDatabase, ref, push, set, onValue, remove, orderByChild, limitToLast } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+        
+        // Firebase 설정 객체
+        const firebaseConfig = {
+          apiKey: "AIzaSyC6Mwjy94nr1zf4xPMWU8EqB__9cRZiMcs",
+          authDomain: "manage-dee73.firebaseapp.com",
+          databaseURL: "https://manage-dee73-default-rtdb.asia-southeast1.firebasedatabase.app",
+          projectId: "manage-dee73",
+          storageBucket: "manage-dee73.appspot.com",
+          messagingSenderId: "519840861970",
+          appId: "1:519840861970:web:4e7dfc39cb112e8c8badcb"
+        };
+        
+        // Firebase 초기화
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        
+        // 글로벌 변수로 Firebase Database 접근 가능하도록 설정
+        window.database = database;
+        window.ref = ref;
+        window.push = push;
+        window.set = set;
+        window.onValue = onValue;
+        window.remove = remove;
+        window.orderByChild = orderByChild;
+        window.limitToLast = limitToLast;
+    </script>
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation Buttons -->
+        <div class="nav-buttons">
+            <button onclick="showSection('input-section')">입출고 페이지</button>
+            <button onclick="authenticateAdmin()">재고 관리 페이지</button>
+        </div>
+
+        <!-- Input Section -->
+        <div id="input-section">
+            <h1>입출고 페이지</h1>
+
+            <div class="form-group">
+                <label for="name-select">기사 이름:</label>
+                <select id="name-select" onchange="toggleCustomInput(this.value)">
+                    <option>김수재</option>
+                    <option>문경훈</option>
+                    <option>방춘혁</option>
+                    <option>홍현철</option>
+                    <option>용석화</option>
+                    <option>정승훈</option>
+                    <option>최동선</option>
+                    <option>홍명희</option>
+                    <option>홍기주</option>
+                    <option>홍지희</option>
+                    <option>직접입력</option>
+                </select>
+                <input type="text" id="custom-name" placeholder="이름 입력" style="display: none;">
+            </div>
+
+            <div class="form-group">
+                <label for="mat-type">1차 분류:</label>
+                <select id="mat-type">
+                    <option>일반</option>
+                    <option>리퍼브</option>
+                    <option>0.5t</option>
+                </select>
+
+                <label for="mat-name">매트 종류:</label>
+                <select id="mat-name">
+                    <option>자이언트플러스</option>
+                    <option>빅토리매트</option>
+                </select>
+
+                <label for="mat-color">색상:</label>
+                <select id="mat-color">
+                    <option>프렌치바닐라</option>
+                    <option>솔리드그레이</option>
+                    <option>베이지코튼</option>
+                </select>
+
+                <label for="quantity">수량:</label>
+                <input type="number" id="quantity" min="1" value="1">
+            </div>
+
+            <div class="form-group">
+                <label for="notes">비고:</label>
+                <textarea id="notes" placeholder="비고 내용을 입력하세요."></textarea>
+            </div>
+
+            <div class="buttons">
+                <button class="action-button" onclick="addEntry('입고')">입고</button>
+                <button class="action-button" onclick="addEntry('출고')">출고</button>
+            </div>
+
+            <div class="recent-entries">
+                <h3>최근 입출고 내역 (정각마다 초기화)</h3>
+                <div id="recent-entries"></div>
+            </div>
+        </div>
+
+        <!-- Admin Section -->
+        <div id="admin-section" class="hidden">
+            <h1>재고 관리 페이지</h1>
+
+            <table id="stock-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2">매트 종류</th>
+                        <th colspan="3">색상</th>
+                        <th rowspan="2">합계</th>
+                    </tr>
+                    <tr>
+                        <th>프렌치바닐라</th>
+                        <th>솔리드그레이</th>
+                        <th>베이지코튼</th>
+                    </tr>
+                </thead>
+                <tbody id="stock-table-body">
+                    <!-- 동적으로 재고가 여기에 추가될 것임 -->
+                </tbody>
+            </table>
+
+            <h3 class="record-table">입출고 기록 내역</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>이름</th>
+                        <th>1차 분류</th>
+                        <th>매트 종류</th>
+                        <th>색상</th>
+                        <th>수량</th>
+                        <th>입출고</th>
+                        <th>비고</th>
+                    </tr>
+                </thead>
+                <tbody id="admin-table-body">
+                    <!-- 데이터가 여기에 동적으로 추가될 것임 -->
+                </tbody>
+            </table>
+
+            <button id="clear-data" onclick="clearData()">초기화</button>
+        </div>
+    </div>
+
+    <script type="module">
+        // Data Mapping
+        const matMapping = {
+            "일반": "",
+            "리퍼브": " R",
+            "0.5t": " 0.5T"
+        };
+
+        // Initial Stock Data
+        let stockData = {
+            "자이언트플러스": { "프렌치바닐라": 0, "솔리드그레이": 0, "베이지코튼": 0 },
+            "자이언트플러스 R": { "프렌치바닐라": 0, "솔리드그레이": 0, "베이지코튼": 0 },
+            "자이언트플러스 0.5T": { "프렌치바닐라": 0, "솔리드그레이": 0, "베이지코튼": 0 },
+            "빅토리매트": { "프렌치바닐라": 0, "솔리드그레이": 0, "베이지코튼": 0 },
+            "빅토리매트 R": { "프렌치바닐라": 0, "솔리드그레이": 0, "베이지코튼": 0 },
+            "빅토리매트 0.5T": { "프렌치바닐라": 0, "솔리드그레이": 0, "베이지코튼": 0 }
+        };
+
+        document.addEventListener("DOMContentLoaded", () => {
+            displayRecentEntries();
+            resetEntriesOnHour();
+        });
+
+        function toggleCustomInput(selectedValue) {
+            const customNameInput = document.getElementById("custom-name");
+            customNameInput.style.display = selectedValue === "직접입력" ? "inline" : "none";
+            customNameInput.value = "";
+        }
+
+        async function addEntry(type) {
+            const nameSelect = document.getElementById("name-select").value;
+            const name = nameSelect === "직접입력"
+                ? document.getElementById("custom-name").value
+                : nameSelect;
+            const category = document.getElementById("mat-type").value;
+            const matName = document.getElementById("mat-name").value;
+            const color = document.getElementById("mat-color").value;
+            const quantity = parseInt(document.getElementById("quantity").value);
+            const notes = document.getElementById("notes").value;
+
+            if (name && category && matName && color && quantity) {
+                const entry = { name, category, matName, color, quantity, type, notes, timestamp: Date.now() };
+
+                try {
+                    const entriesRef = ref(database, 'entries');
+                    const newEntryRef = push(entriesRef);
+                    await set(newEntryRef, entry);
+
+                    // Reset form fields
+                    document.getElementById("custom-name").style.display = "none";
+                    document.getElementById("custom-name").value = "";
+                    document.getElementById("notes").value = "";
+                    document.getElementById("quantity").value = "1";
+                } catch (error) {
+                    alert("데이터 저장 중 오류 발생: " + error.message);
+                }
+            } else {
+                alert("모든 필드를 정확히 입력해주세요!");
+            }
+        }
+
+        function displayRecentEntries() {
+            const recentContainer = document.getElementById("recent-entries");
+            recentContainer.innerHTML = "";
+
+            const entriesRef = ref(database, 'entries');
+            onValue(entriesRef, (snapshot) => {
+                const entries = snapshot.val();
+                const entriesArray = [];
+
+                for (let key in entries) {
+                    entriesArray.push(entries[key]);
+                }
+
+                // 최신 순으로 정렬
+                entriesArray.sort((a, b) => b.timestamp - a.timestamp);
+
+                // 최근 10개만 표시
+                entriesArray.slice(0, 10).forEach(entry => {
+                    recentContainer.innerHTML += `<div class="entry">${entry.name} | ${entry.category} | ${entry.matName} | ${entry.color} | ${entry.quantity}장 (${entry.type}) | ${entry.notes}</div>`;
+                });
+            }, (error) => {
+                alert("실시간 데이터 불러오기 중 오류 발생: " + error.message);
+            });
+        }
+
+        function resetEntriesOnHour() {
+            const now = new Date();
+            const msUntilNextHour = (60 - now.getMinutes()) * 60000 - now.getSeconds() * 1000 - now.getMilliseconds();
+
+            setTimeout(() => {
+                // Firebase Realtime Database는 데이터를 특정 시점에 자동으로 삭제하는 기능이 없으므로,
+                // 여기서는 페이지를 새로고침하여 최근 내역을 초기화합니다.
+                // 필요에 따라 Firebase Cloud Functions를 사용하여 자동 삭제 기능을 구현할 수 있습니다.
+                window.location.reload();
+                resetEntriesOnHour();
+            }, msUntilNextHour);
+        }
+
+        function showSection(sectionId) {
+            document.getElementById("input-section").classList.add("hidden");
+            document.getElementById("admin-section").classList.add("hidden");
+            document.getElementById(sectionId).classList.remove("hidden");
+
+            if (sectionId === "admin-section") {
+                loadAdminData();
+                updateStockTable();
+            }
+        }
+
+        function authenticateAdmin() {
+            const password = prompt("비밀번호를 입력하세요:");
+            if (password === "1515") { // 실제 비밀번호는 더 안전한 방법으로 관리해야 합니다.
+                showSection('admin-section');
+            } else {
+                alert("비밀번호가 올바르지 않습니다.");
+            }
+        }
+
+        function loadAdminData() {
+            const tableBody = document.getElementById("admin-table-body");
+            tableBody.innerHTML = "";
+
+            // 재고 데이터 초기화
+            for (const mat in stockData) {
+                for (const color in stockData[mat]) {
+                    stockData[mat][color] = 0;
+                }
+            }
+
+            const entriesRef = ref(database, 'entries');
+            onValue(entriesRef, (snapshot) => {
+                const adminEntries = snapshot.val();
+                tableBody.innerHTML = "";
+
+                for (let key in adminEntries) {
+                    const entry = adminEntries[key];
+                    const row = document.createElement("tr");
+                    row.innerHTML = `<td>${entry.name}</td><td>${entry.category}</td><td>${getMatName(entry.category, entry.matName)}</td><td>${entry.color}</td><td>${entry.quantity}</td><td>${entry.type}</td><td>${entry.notes}</td>`;
+                    tableBody.appendChild(row);
+
+                    // 재고 데이터 업데이트
+                    updateStockData(entry);
+                }
+                updateStockTable();
+            }, (error) => {
+                alert("관리자 데이터 실시간 업데이트 중 오류 발생: " + error.message);
+            });
+        }
+
+        function updateStockData(entry) {
+            const matName = getMatName(entry.category, entry.matName);
+            if (stockData[matName] && stockData[matName][entry.color] !== undefined) {
+                if (entry.type === "입고") {
+                    stockData[matName][entry.color] += parseInt(entry.quantity);
+                } else if (entry.type === "출고") {
+                    stockData[matName][entry.color] -= parseInt(entry.quantity);
+                }
+                updateStockTable();
+            }
+        }
+
+        function updateStockTable() {
+            const tableBody = document.getElementById("stock-table-body");
+            tableBody.innerHTML = "";
+
+            for (const type in stockData) {
+                const colors = stockData[type];
+                const row = document.createElement("tr");
+                let total = 0;
+
+                row.innerHTML = `<td>${type}</td>`;
+                for (const color in colors) {
+                    row.innerHTML += `<td>${colors[color]}장</td>`;
+                    total += colors[color];
+                }
+                row.innerHTML += `<td class="total-cell">${total}장</td>`;
+                tableBody.appendChild(row);
+            }
+        }
+
+        function getMatName(category, type) {
+            const suffix = matMapping[category] || "";
+            return `${type}${suffix}`;
+        }
+
+        async function clearData() {
+            if (confirm("정말 데이터를 초기화하시겠습니까?")) {
+                try {
+                    await remove(ref(database));
+                    alert("데이터가 초기화되었습니다.");
+                    window.location.reload();
+                } catch (error) {
+                    alert("데이터 초기화 중 오류 발생: " + error.message);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
