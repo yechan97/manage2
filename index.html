@@ -24,15 +24,23 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             box-sizing: border-box;
         }
-        h1 {
+        /* 입력 및 관리 섹션 헤더 */
+        .input-header, .admin-header {
             text-align: center;
             padding: 15px;
-            background-color: #6a9fb5;
             color: #ffffff;
             border-radius: 10px;
             margin-bottom: 20px;
             font-size: 24px;
             font-weight: bold;
+        }
+        /* 입출고 페이지 헤더: 파스텔톤 파란색 */
+        .input-header {
+            background-color: #a0c4ff; /* 파스텔 파란색 */
+        }
+        /* 재고 관리 페이지 헤더: 기존 파란색 유지 */
+        .admin-header {
+            background-color: #6a9fb5;
         }
         /* Navigation Styles */
         .nav-buttons {
@@ -99,9 +107,10 @@
             margin-top: 20px;
             flex-wrap: wrap;
         }
-        button.action-button {
+        /* 입고 버튼: 녹색 계열 */
+        button.action-button-in {
             padding: 15px 25px;
-            background-color: #ff7043;
+            background-color: #4CAF50; /* 녹색 */
             color: #ffffff;
             border: none;
             border-radius: 5px;
@@ -114,8 +123,27 @@
             margin-bottom: 10px;
             text-align: center; /* 텍스트 중앙 정렬 */
         }
-        button.action-button:hover {
-            background-color: #d84315;
+        button.action-button-in:hover {
+            background-color: #388E3C; /* 진한 녹색 */
+        }
+        /* 출고 버튼: 빨간색 계열 */
+        button.action-button-out {
+            padding: 15px 25px;
+            background-color: #F44336; /* 빨간색 */
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 20px;
+            font-family: 'Gowun Dodum', sans-serif;
+            width: 48%;
+            box-sizing: border-box;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center; /* 텍스트 중앙 정렬 */
+        }
+        button.action-button-out:hover {
+            background-color: #D32F2F; /* 진한 빨간색 */
         }
         .recent-entries h3 {
             text-align: center;
@@ -210,7 +238,7 @@
                 font-size: 16px;
                 padding: 12px;
             }
-            .nav-buttons button, button.action-button, button#clear-data {
+            .nav-buttons button, button.action-button-in, button.action-button-out, button#clear-data {
                 font-size: 16px;
                 padding: 12px 18px;
             }
@@ -254,7 +282,7 @@
         const database = firebase.database();
 
         const matMapping = {
-            "정상": "",
+            "일반": "",
             "리퍼브": " R",
             "0.5t": " 0.5T"
         };
@@ -501,10 +529,10 @@
 
         <!-- Input Section -->
         <div id="input-section">
-            <h1>입출고 페이지</h1>
+            <h1 class="input-header">입출고 페이지</h1>
 
             <div class="form-group">
-                <label for="name-select">성명:</label>
+                <label for="name-select">기사 이름:</label>
                 <select id="name-select" onchange="toggleCustomInput(this.value)">
                     <option>김수재</option>
                     <option>문경훈</option>
@@ -524,7 +552,7 @@
             <div class="form-group">
                 <label for="mat-type">1차 분류:</label>
                 <select id="mat-type">
-                    <option>정상</option>
+                    <option>일반</option>
                     <option>리퍼브</option>
                     <option>0.5t</option>
                 </select>
@@ -552,8 +580,8 @@
             </div>
 
             <div class="buttons">
-                <button class="action-button" onclick="addEntry('입고')">입고</button>
-                <button class="action-button" onclick="addEntry('출고')">출고</button>
+                <button class="action-button-in" onclick="addEntry('입고')">입고</button>
+                <button class="action-button-out" onclick="addEntry('출고')">출고</button>
             </div>
 
             <div class="recent-entries">
@@ -564,7 +592,7 @@
 
         <!-- Admin Section -->
         <div id="admin-section" class="hidden">
-            <h1>재고 관리 페이지</h1>
+            <h1 class="admin-header">재고 관리 페이지</h1>
 
             <table id="stock-table">
                 <thead>
