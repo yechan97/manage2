@@ -396,8 +396,18 @@
                         // 최신 순으로 정렬
                         entriesArray.sort((a, b) => b.timestamp - a.timestamp);
                         entriesArray.forEach(entry => {
+                            const formattedTime = formatTimestamp(entry.timestamp);
                             const row = document.createElement("tr");
-                            row.innerHTML = `<td>${entry.name}</td><td>${entry.category}</td><td>${getMatName(entry.category, entry.matName)}</td><td>${entry.color}</td><td>${entry.quantity}</td><td>${entry.type}</td><td>${entry.notes}</td>`;
+                            row.innerHTML = `
+                                <td>${entry.name}</td>
+                                <td>${entry.category}</td>
+                                <td>${getMatName(entry.category, entry.matName)}</td>
+                                <td>${entry.color}</td>
+                                <td>${entry.quantity}</td>
+                                <td>${entry.type}</td>
+                                <td>${entry.notes}</td>
+                                <td>${formattedTime}</td>
+                            `;
                             tableBody.appendChild(row);
 
                             // 재고 데이터 업데이트
@@ -405,7 +415,7 @@
                         });
                         updateStockTable();
                     } else {
-                        tableBody.innerHTML = "<tr><td colspan='7'>입출고 기록이 없습니다.</td></tr>";
+                        tableBody.innerHTML = "<tr><td colspan='8'>입출고 기록이 없습니다.</td></tr>";
                         updateStockTable();
                     }
                 }, (error) => {
@@ -566,6 +576,7 @@
                         <th>수량</th>
                         <th>입출고</th>
                         <th>비고</th>
+                        <th>작성시간</th> <!-- 작성시간 열 추가 -->
                     </tr>
                 </thead>
                 <tbody id="admin-table-body">
