@@ -6,6 +6,8 @@
     <!-- 뷰포트 메타 태그 수정: 초기 스케일을 0.85로 설정 -->
     <meta name="viewport" content="width=device-width, initial-scale=0.85">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap">
+    <!-- SheetJS 라이브러리 추가 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body {
             font-family: 'Gowun Dodum', sans-serif;
@@ -34,7 +36,7 @@
             font-size: 24px;
             font-weight: bold;
         }
-        /* 토리매트 입/출고 헤더: 파스텔톤 파란색 */
+        /* 입출고 페이지 헤더: 파스텔톤 파란색 */
         .input-header {
             background-color: #a0c4ff; /* 파스텔 파란색 */
         }
@@ -214,6 +216,31 @@
         button#clear-data:hover {
             background-color: #d84315;
         }
+        /* 엑셀 저장 버튼 스타일 */
+        .export-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .export-buttons button {
+            padding: 12px 20px;
+            background-color: #2196F3; /* 파란색 */
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 48%;
+            box-sizing: border-box;
+            font-family: 'Gowun Dodum', sans-serif;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .export-buttons button:hover {
+            background-color: #1976D2; /* 진한 파란색 */
+        }
         /* Hide sections */
         .hidden {
             display: none;
@@ -238,7 +265,7 @@
                 font-size: 16px;
                 padding: 12px;
             }
-            .nav-buttons button, button.action-button-in, button.action-button-out, button#clear-data {
+            .nav-buttons button, button.action-button-in, button.action-button-out, button#clear-data, .export-buttons button {
                 font-size: 16px;
                 padding: 12px 18px;
             }
@@ -282,7 +309,7 @@
         const database = firebase.database();
 
         const matMapping = {
-            "정상": "",
+            "일반": "",
             "리퍼브": " R",
             "0.5t": " 0.5T"
         };
@@ -416,7 +443,7 @@
 
         function authenticateAdmin() {
             const password = prompt("비밀번호를 입력하세요:");
-            if (password === "9998") { // 실제 비밀번호는 환경 변수로 관리하는 것이 좋습니다.
+            if (password === "1515") { // 실제 비밀번호는 환경 변수로 관리하는 것이 좋습니다.
                 showSection('admin-section');
             } else {
                 alert("비밀번호가 올바르지 않습니다.");
@@ -517,22 +544,42 @@
                     });
             }
         }
+
+        // 엑셀 저장 함수: 재고 내역
+        function exportStock() {
+            const table = document.getElementById('stock-table');
+            const workbook = XLSX.utils.table_to_book(table, {sheet:"재고내역"});
+            const date = new Date();
+            const formattedDate = `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2,'0')}${date.getDate().toString().padStart(2,'0')}`;
+            const filename = `${formattedDate}_재고내역.xlsx`;
+            XLSX.writeFile(workbook, filename);
+        }
+
+        // 엑셀 저장 함수: 입출고 기록
+        function exportRecords() {
+            const table = document.getElementById('records-table'); // records-table id 추가 필요
+            const workbook = XLSX.utils.table_to_book(table, {sheet:"입출고기록"});
+            const date = new Date();
+            const formattedDate = `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2,'0')}${date.getDate().toString().padStart(2,'0')}`;
+            const filename = `${formattedDate}_입출고기록.xlsx`;
+            XLSX.writeFile(workbook, filename);
+        }
     </script>
 </head>
 <body>
     <div class="container">
         <!-- Navigation Buttons -->
         <div class="nav-buttons">
-            <button onclick="showSection('input-section')">토리매트 입/출고</button>
+            <button onclick="showSection('input-section')">입출고 페이지</button>
             <button onclick="authenticateAdmin()">재고 관리 페이지</button>
         </div>
 
         <!-- Input Section -->
         <div id="input-section">
-            <h1 class="input-header">토리매트 입/출고</h1>
+            <h1 class="input-header">입출고 페이지</h1>
 
             <div class="form-group">
-                <label for="name-select">성명:</label>
+                <label for="name-select">기사 이름:</label>
                 <select id="name-select" onchange="toggleCustomInput(this.value)">
                     <option>김수재</option>
                     <option>문경훈</option>
@@ -550,9 +597,9 @@
             </div>
 
             <div class="form-group">
-                <label for="mat-type">구분:</label>
+                <label for="mat-type">1차 분류:</label>
                 <select id="mat-type">
-                    <option>정상</option>
+                    <option>일반</option>
                     <option>리퍼브</option>
                     <option>0.5t</option>
                 </select>
@@ -612,13 +659,19 @@
                 </tbody>
             </table>
 
+            <!-- 엑셀 저장 버튼 추가 -->
+            <div class="export-buttons">
+                <button onclick="exportStock()">재고 내역 엑셀 저장</button>
+                <button onclick="exportRecords()">입출고 기록 엑셀 저장</button>
+            </div>
+
             <h3 class="record-table">입출고 기록 내역</h3>
             <div class="table-container">
-                <table>
+                <table id="records-table"> <!-- id="records-table" 추가 -->
                     <thead>
                         <tr>
                             <th>이름</th>
-                            <th>구분</th>
+                            <th>1차 분류</th>
                             <th>매트 종류</th>
                             <th>색상</th>
                             <th>수량</th>
