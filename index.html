@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>입출고 및 재고 관리 페이지</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 뷰포트 메타 태그 최적화 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap">
     <style>
         body {
@@ -51,6 +52,7 @@
             font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
             font-weight: bold;
             margin-bottom: 10px;
+            white-space: nowrap; /* 버튼 텍스트가 세로로 표시되지 않도록 설정 */
         }
         .nav-buttons button:hover {
             background-color: #d84315;
@@ -65,6 +67,7 @@
             margin-bottom: 5px;
             font-weight: bold;
             font-size: 18px;
+            white-space: nowrap; /* 레이블 텍스트가 세로로 표시되지 않도록 설정 */
         }
         select, input[type="text"], input[type="number"] {
             padding: 14px;
@@ -76,6 +79,9 @@
             box-sizing: border-box;
             font-size: 18px;
             font-weight: bold;
+            white-space: nowrap; /* 입력 필드 텍스트가 세로로 표시되지 않도록 설정 */
+            overflow: hidden; /* 넘치는 텍스트 숨김 */
+            text-overflow: ellipsis; /* 넘치는 텍스트는 ...으로 표시 */
         }
         textarea {
             width: 100%;
@@ -88,6 +94,9 @@
             margin-bottom: 10px;
             font-size: 18px;
             font-weight: bold;
+            white-space: nowrap; /* 텍스트가 세로로 표시되지 않도록 설정 */
+            overflow: hidden; /* 넘치는 텍스트 숨김 */
+            text-overflow: ellipsis; /* 넘치는 텍스트는 ...으로 표시 */
         }
         .buttons {
             display: flex;
@@ -108,6 +117,7 @@
             box-sizing: border-box;
             font-weight: bold;
             margin-bottom: 10px;
+            white-space: nowrap; /* 버튼 텍스트가 세로로 표시되지 않도록 설정 */
         }
         button.action-button:hover {
             background-color: #d84315;
@@ -129,6 +139,7 @@
             font-size: 18px;
             border-radius: 5px;
             font-weight: bold;
+            word-wrap: break-word; /* 긴 단어가 있을 경우 줄바꿈 */
         }
         /* Admin Page Styles */
         table {
@@ -143,6 +154,9 @@
             color: #333333;
             font-size: 18px;
             font-weight: bold;
+            white-space: nowrap; /* 텍스트가 세로로 표시되지 않도록 설정 */
+            overflow: hidden; /* 넘치는 텍스트 숨김 */
+            text-overflow: ellipsis; /* 넘치는 텍스트는 ...으로 표시 */
         }
         th {
             background-color: #8bc34a;
@@ -175,6 +189,7 @@
             font-weight: bold;
             width: 100%;
             box-sizing: border-box;
+            white-space: nowrap; /* 버튼 텍스트가 세로로 표시되지 않도록 설정 */
         }
         button#clear-data:hover {
             background-color: #d84315;
@@ -266,10 +281,15 @@
             customNameInput.value = "";
         }
 
+        // 작성 시간을 "MM/DD H:MM" 형식으로 포맷
         function formatTimestamp(timestamp) {
             const date = new Date(timestamp);
-            const options = { month: 'numeric', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' };
-            return date.toLocaleString('ko-KR', options);
+            const month = date.getMonth() + 1; // 월은 0부터 시작
+            const day = date.getDate();
+            let hours = date.getHours();
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            // 24시간 형식 사용, 필요 시 12시간 형식으로 변경 가능
+            return `${month}/${day} ${hours}:${minutes}`;
         }
 
         function addEntry(type) {
