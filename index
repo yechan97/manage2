@@ -165,11 +165,10 @@
     </style>
     
     <!-- Firebase SDK 추가 -->
-    <script type="module">
-        // Firebase SDK 불러오기
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getDatabase, ref, push, set, onValue, remove, orderByChild, limitToLast } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
-        
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
+    <script>
         // Firebase 설정 객체
         const firebaseConfig = {
           apiKey: "AIzaSyC6Mwjy94nr1zf4xPMWU8EqB__9cRZiMcs",
@@ -182,18 +181,8 @@
         };
         
         // Firebase 초기화
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
-        
-        // 글로벌 변수로 Firebase Database 접근 가능하도록 설정
-        window.database = database;
-        window.ref = ref;
-        window.push = push;
-        window.set = set;
-        window.onValue = onValue;
-        window.remove = remove;
-        window.orderByChild = orderByChild;
-        window.limitToLast = limitToLast;
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
     </script>
 </head>
 <body>
@@ -311,15 +300,13 @@
         </div>
     </div>
 
-    <script type="module">
-        // Data Mapping
+    <script>
         const matMapping = {
             "일반": "",
             "리퍼브": " R",
             "0.5t": " 0.5T"
         };
 
-        // Initial Stock Data
         let stockData = {
             "자이언트플러스": { "프렌치바닐라": 0, "솔리드그레이": 0, "베이지코튼": 0 },
             "자이언트플러스 R": { "프렌치바닐라": 0, "솔리드그레이": 0, "베이지코튼": 0 },
@@ -331,6 +318,7 @@
 
         document.addEventListener("DOMContentLoaded", () => {
             displayRecentEntries();
+            loadAdminData();
             resetEntriesOnHour();
         });
 
@@ -340,11 +328,10 @@
             customNameInput.value = "";
         }
 
-        async function addEntry(type) {
-            const nameSelect = document.getElementById("name-select").value;
-            const name = nameSelect === "직접입력"
+        function addEntry(type) {
+            const name = document.getElementById("name-select").value === "직접입력"
                 ? document.getElementById("custom-name").value
-                : nameSelect;
+                : document.getElementById("name-select").value;
             const category = document.getElementById("mat-type").value;
             const matName = document.getElementById("mat-name").value;
             const color = document.getElementById("mat-color").value;
@@ -354,19 +341,22 @@
             if (name && category && matName && color && quantity) {
                 const entry = { name, category, matName, color, quantity, type, notes, timestamp: Date.now() };
 
-                try {
-                    const entriesRef = ref(database, 'entries');
-                    const newEntryRef = push(entriesRef);
-                    await set(newEntryRef, entry);
+                // Firebase에 entry 추가
+                const newEntryKey = firebase.database().ref().child('entries').push().key;
+                const updates = {};
+                updates['/entries/' + newEntryKey] = entry;
 
-                    // Reset form fields
-                    document.getElementById("custom-name").style.display = "none";
-                    document.getElementById("custom-name").value = "";
-                    document.getElementById("notes").value = "";
-                    document.getElementById("quantity").value = "1";
-                } catch (error) {
-                    alert("데이터 저장 중 오류 발생: " + error.message);
-                }
+                firebase.database().ref().update(updates)
+                    .then(() => {
+                        // UI 업데이트
+                        document.getElementById("custom-name").style.display = "none";
+                        document.getElementById("custom-name").value = "";
+                        document.getElementById("notes").value = "";
+                        document.getElementById("quantity").value = "1";
+                    })
+                    .catch((error) => {
+                        alert("데이터 저장 중 오류 발생: " + error.message);
+                    });
             } else {
                 alert("모든 필드를 정확히 입력해주세요!");
             }
@@ -376,25 +366,25 @@
             const recentContainer = document.getElementById("recent-entries");
             recentContainer.innerHTML = "";
 
-            const entriesRef = ref(database, 'entries');
-            onValue(entriesRef, (snapshot) => {
-                const entries = snapshot.val();
-                const entriesArray = [];
+            firebase.database().ref('entries').orderByChild('timestamp').limitToLast(10)
+                .on('value', (snapshot) => {
+                    recentContainer.innerHTML = "";
+                    const entries = snapshot.val();
+                    const entriesArray = [];
 
-                for (let key in entries) {
-                    entriesArray.push(entries[key]);
-                }
+                    for (let key in entries) {
+                        entriesArray.push(entries[key]);
+                    }
 
-                // 최신 순으로 정렬
-                entriesArray.sort((a, b) => b.timestamp - a.timestamp);
+                    // 최신 순으로 정렬
+                    entriesArray.sort((a, b) => b.timestamp - a.timestamp);
 
-                // 최근 10개만 표시
-                entriesArray.slice(0, 10).forEach(entry => {
-                    recentContainer.innerHTML += `<div class="entry">${entry.name} | ${entry.category} | ${entry.matName} | ${entry.color} | ${entry.quantity}장 (${entry.type}) | ${entry.notes}</div>`;
+                    entriesArray.forEach(entry => {
+                        recentContainer.innerHTML += `<div class="entry">${entry.name} | ${entry.category} | ${entry.matName} | ${entry.color} | ${entry.quantity}장 (${entry.type}) | ${entry.notes}</div>`;
+                    });
+                }, (error) => {
+                    alert("실시간 데이터 불러오기 중 오류 발생: " + error.message);
                 });
-            }, (error) => {
-                alert("실시간 데이터 불러오기 중 오류 발생: " + error.message);
-            });
         }
 
         function resetEntriesOnHour() {
@@ -402,10 +392,14 @@
             const msUntilNextHour = (60 - now.getMinutes()) * 60000 - now.getSeconds() * 1000 - now.getMilliseconds();
 
             setTimeout(() => {
-                // Firebase Realtime Database는 데이터를 특정 시점에 자동으로 삭제하는 기능이 없으므로,
-                // 여기서는 페이지를 새로고침하여 최근 내역을 초기화합니다.
-                // 필요에 따라 Firebase Cloud Functions를 사용하여 자동 삭제 기능을 구현할 수 있습니다.
-                window.location.reload();
+                firebase.database().ref('entries').remove()
+                    .then(() => {
+                        displayRecentEntries();
+                        loadAdminData();
+                    })
+                    .catch((error) => {
+                        alert("데이터 초기화 중 오류 발생: " + error.message);
+                    });
                 resetEntriesOnHour();
             }, msUntilNextHour);
         }
@@ -423,7 +417,7 @@
 
         function authenticateAdmin() {
             const password = prompt("비밀번호를 입력하세요:");
-            if (password === "1515") { // 실제 비밀번호는 더 안전한 방법으로 관리해야 합니다.
+            if (password === "1515") { // 실제 비밀번호는 환경 변수로 관리하는 것이 좋습니다.
                 showSection('admin-section');
             } else {
                 alert("비밀번호가 올바르지 않습니다.");
@@ -441,24 +435,23 @@
                 }
             }
 
-            const entriesRef = ref(database, 'entries');
-            onValue(entriesRef, (snapshot) => {
-                const adminEntries = snapshot.val();
-                tableBody.innerHTML = "";
+            firebase.database().ref('entries')
+                .on('value', (snapshot) => {
+                    tableBody.innerHTML = "";
+                    const adminEntries = snapshot.val();
+                    for (let key in adminEntries) {
+                        const entry = adminEntries[key];
+                        const row = document.createElement("tr");
+                        row.innerHTML = `<td>${entry.name}</td><td>${entry.category}</td><td>${getMatName(entry.category, entry.matName)}</td><td>${entry.color}</td><td>${entry.quantity}</td><td>${entry.type}</td><td>${entry.notes}</td>`;
+                        tableBody.appendChild(row);
 
-                for (let key in adminEntries) {
-                    const entry = adminEntries[key];
-                    const row = document.createElement("tr");
-                    row.innerHTML = `<td>${entry.name}</td><td>${entry.category}</td><td>${getMatName(entry.category, entry.matName)}</td><td>${entry.color}</td><td>${entry.quantity}</td><td>${entry.type}</td><td>${entry.notes}</td>`;
-                    tableBody.appendChild(row);
-
-                    // 재고 데이터 업데이트
-                    updateStockData(entry);
-                }
-                updateStockTable();
-            }, (error) => {
-                alert("관리자 데이터 실시간 업데이트 중 오류 발생: " + error.message);
-            });
+                        // 재고 데이터 업데이트
+                        updateStockData(entry);
+                    }
+                    updateStockTable();
+                }, (error) => {
+                    alert("관리자 데이터 실시간 업데이트 중 오류 발생: " + error.message);
+                });
         }
 
         function updateStockData(entry) {
@@ -497,15 +490,16 @@
             return `${type}${suffix}`;
         }
 
-        async function clearData() {
+        function clearData() {
             if (confirm("정말 데이터를 초기화하시겠습니까?")) {
-                try {
-                    await remove(ref(database));
-                    alert("데이터가 초기화되었습니다.");
-                    window.location.reload();
-                } catch (error) {
-                    alert("데이터 초기화 중 오류 발생: " + error.message);
-                }
+                firebase.database().ref().remove()
+                    .then(() => {
+                        alert("데이터가 초기화되었습니다.");
+                        window.location.reload();
+                    })
+                    .catch((error) => {
+                        alert("데이터 초기화 중 오류 발생: " + error.message);
+                    });
             }
         }
     </script>
