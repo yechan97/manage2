@@ -192,7 +192,16 @@
         }
         /* 총 수량 스타일 */
         .total-quantity {
+            display: flex;
+            align-items: center;
+            gap: 10px;
             margin-top: 10px;
+        }
+        .total-quantity label {
+            font-size: 20px;
+            color: #333333;
+        }
+        .total-quantity span {
             font-size: 20px;
             font-weight: bold;
             color: #333333;
@@ -314,6 +323,7 @@
             }
             .quantity-group {
                 flex-direction: column; /* 모바일에서는 세로로 배치 */
+                gap: 10px; /* 간격 줄이기 */
             }
             .quantity-group .form-group {
                 width: 100%;
@@ -338,21 +348,6 @@
         .quantity-group .form-group {
             flex: 1;
             min-width: 120px; /* 최소 너비 설정 */
-        }
-        /* 총 수량 스타일 */
-        .total-quantity {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .total-quantity label {
-            font-size: 20px;
-            color: #333333;
-        }
-        .total-quantity span {
-            font-size: 20px;
-            font-weight: bold;
-            color: #333333;
         }
     </style>
     
