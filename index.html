@@ -36,7 +36,7 @@
             font-size: 24px;
             font-weight: bold;
         }
-        /* 입출고 페이지 헤더: 파스텔톤 파란색 */
+        /* 토리매트 입/출고 헤더: 파스텔톤 파란색 */
         .input-header {
             background-color: #a0c4ff; /* 파스텔 파란색 */
         }
@@ -147,24 +147,6 @@
         button.action-button-out:hover {
             background-color: #D32F2F; /* 진한 빨간색 */
         }
-        /* 엑셀 저장 버튼 스타일 */
-        button#export-stock-data, button#export-entry-data {
-            padding: 12px 25px;
-            background-color: #2196F3; /* 파란색 */
-            color: #ffffff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 18px;
-            font-weight: bold;
-            width: 48%;
-            box-sizing: border-box;
-            text-align: center;
-            margin-top: 10px;
-        }
-        button#export-stock-data:hover, button#export-entry-data:hover {
-            background-color: #1976D2; /* 진한 파란색 */
-        }
         .recent-entries h3 {
             text-align: center;
             background-color: #8bc34a;
@@ -234,6 +216,31 @@
         button#clear-data:hover {
             background-color: #d84315;
         }
+        /* 엑셀 저장 버튼 스타일 */
+        .export-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .export-buttons button {
+            padding: 12px 20px;
+            background-color: #2196F3; /* 파란색 */
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 48%;
+            box-sizing: border-box;
+            font-family: 'Gowun Dodum', sans-serif;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .export-buttons button:hover {
+            background-color: #1976D2; /* 진한 파란색 */
+        }
         /* Hide sections */
         .hidden {
             display: none;
@@ -258,7 +265,7 @@
                 font-size: 16px;
                 padding: 12px;
             }
-            .nav-buttons button, button.action-button-in, button.action-button-out, button#clear-data, button#export-stock-data, button#export-entry-data {
+            .nav-buttons button, button.action-button-in, button.action-button-out, button#clear-data, .export-buttons button {
                 font-size: 16px;
                 padding: 12px 18px;
             }
@@ -278,32 +285,6 @@
             font-size: 14px;
             color: #555;
             font-weight: normal;
-        }
-        /* 박스와 낱장 입력 라벨 스타일 */
-        .quantity-inputs {
-            display: flex;
-            gap: 10px;
-        }
-        .quantity-input {
-            flex: 1;
-            position: relative;
-        }
-        .quantity-input input {
-            width: 100%;
-        }
-        .quantity-input::after {
-            content: attr(data-label);
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #888;
-            pointer-events: none;
-            transition: opacity 0.2s;
-        }
-        .quantity-input input:focus::after,
-        .quantity-input input:not(:placeholder-shown)::after {
-            opacity: 0;
         }
     </style>
     
@@ -328,12 +309,9 @@
         const database = firebase.database();
 
         const matMapping = {
-            "자이언트플러스": 4, // 1박스 = 4장
-            "자이언트플러스 R": 4,
-            "자이언트플러스 0.5T": 4,
-            "빅토리매트": 3, // 1박스 = 3장
-            "빅토리매트 R": 3,
-            "빅토리매트 0.5T": 3
+            "정상": "",
+            "리퍼브": " R",
+            "0.5t": " 0.5T"
         };
 
         let stockData = {
@@ -375,20 +353,16 @@
             const category = document.getElementById("mat-type").value;
             const matName = document.getElementById("mat-name").value;
             const color = document.getElementById("mat-color").value;
-            const boxQuantity = parseInt(document.getElementById("box-quantity").value) || 0;
-            const singleQuantity = parseInt(document.getElementById("single-quantity").value) || 0;
+            const quantity = parseInt(document.getElementById("quantity").value);
             const notes = document.getElementById("notes").value.trim();
 
-            if (name && category && matName && color && (boxQuantity > 0 || singleQuantity > 0)) {
-                const itemsPerBox = matMapping[matName];
-                const totalQuantity = (boxQuantity * itemsPerBox) + singleQuantity;
-
+            if (name && category && matName && color && quantity) {
                 const entry = { 
                     name, 
                     category, 
                     matName, 
                     color, 
-                    quantity: totalQuantity, 
+                    quantity, 
                     type, 
                     notes, 
                     timestamp: Date.now() 
@@ -405,8 +379,7 @@
                         document.getElementById("custom-name").style.display = "none";
                         document.getElementById("custom-name").value = "";
                         document.getElementById("notes").value = "";
-                        document.getElementById("box-quantity").value = "0";
-                        document.getElementById("single-quantity").value = "0";
+                        document.getElementById("quantity").value = "1";
                     })
                     .catch((error) => {
                         alert("데이터 저장 중 오류 발생: " + error.message);
@@ -470,7 +443,7 @@
 
         function authenticateAdmin() {
             const password = prompt("비밀번호를 입력하세요:");
-            if (password === "1515") { // 실제 비밀번호는 환경 변수로 관리하는 것이 좋습니다.
+            if (password === "9998") { // 실제 비밀번호는 환경 변수로 관리하는 것이 좋습니다.
                 showSection('admin-section');
             } else {
                 alert("비밀번호가 올바르지 않습니다.");
@@ -572,43 +545,24 @@
             }
         }
 
-        // 엑셀로 저장 기능
-        function exportStockToExcel() {
-            const stockTable = document.getElementById("stock-table");
-            const stockSheet = XLSX.utils.table_to_sheet(stockTable);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, stockSheet, "재고 현황");
-
-            // 현재 날짜와 시간으로 파일명 생성
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const filename = `${year}${month}${day}_${hours}${minutes}_재고현황.xlsx`;
-
-            // 워크북을 엑셀 파일로 저장
-            XLSX.writeFile(wb, filename);
+        // 엑셀 저장 함수: 재고 내역
+        function exportStock() {
+            const table = document.getElementById('stock-table');
+            const workbook = XLSX.utils.table_to_book(table, {sheet:"재고내역"});
+            const date = new Date();
+            const formattedDate = `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2,'0')}${date.getDate().toString().padStart(2,'0')}`;
+            const filename = `${formattedDate}_재고내역.xlsx`;
+            XLSX.writeFile(workbook, filename);
         }
 
-        function exportEntriesToExcel() {
-            const recordTable = document.querySelector(".record-table + div table");
-            const recordSheet = XLSX.utils.table_to_sheet(recordTable);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, recordSheet, "입출고 기록");
-
-            // 현재 날짜와 시간으로 파일명 생성
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const filename = `${year}${month}${day}_${hours}${minutes}_입출고기록.xlsx`;
-
-            // 워크북을 엑셀 파일로 저장
-            XLSX.writeFile(wb, filename);
+        // 엑셀 저장 함수: 입출고 기록
+        function exportRecords() {
+            const table = document.getElementById('records-table'); // records-table id 추가 필요
+            const workbook = XLSX.utils.table_to_book(table, {sheet:"입출고기록"});
+            const date = new Date();
+            const formattedDate = `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2,'0')}${date.getDate().toString().padStart(2,'0')}`;
+            const filename = `${formattedDate}_입출고기록.xlsx`;
+            XLSX.writeFile(workbook, filename);
         }
     </script>
 </head>
@@ -616,16 +570,16 @@
     <div class="container">
         <!-- Navigation Buttons -->
         <div class="nav-buttons">
-            <button onclick="showSection('input-section')">입출고 페이지</button>
+            <button onclick="showSection('input-section')">토리매트 입/출고</button>
             <button onclick="authenticateAdmin()">재고 관리 페이지</button>
         </div>
 
         <!-- Input Section -->
         <div id="input-section">
-            <h1 class="input-header">입출고 페이지</h1>
+            <h1 class="input-header">토리매트 입/출고</h1>
 
             <div class="form-group">
-                <label for="name-select">기사 이름:</label>
+                <label for="name-select">성명:</label>
                 <select id="name-select" onchange="toggleCustomInput(this.value)">
                     <option>김수재</option>
                     <option>문경훈</option>
@@ -643,10 +597,11 @@
             </div>
 
             <div class="form-group">
-                <label for="mat-type">1차 분류:</label>
+                <label for="mat-type">구분:</label>
                 <select id="mat-type">
-                    <option>자이언트플러스</option>
-                    <option>빅토리매트</option>
+                    <option>정상</option>
+                    <option>리퍼브</option>
+                    <option>0.5t</option>
                 </select>
 
                 <label for="mat-name">매트 종류:</label>
@@ -661,18 +616,9 @@
                     <option>솔리드그레이</option>
                     <option>베이지코튼</option>
                 </select>
-            </div>
 
-            <div class="form-group">
-                <label>수량:</label>
-                <div class="quantity-inputs">
-                    <div class="quantity-input" data-label="박스">
-                        <input type="number" id="box-quantity" min="0" value="0" placeholder="박스">
-                    </div>
-                    <div class="quantity-input" data-label="낱장">
-                        <input type="number" id="single-quantity" min="0" value="0" placeholder="낱장">
-                    </div>
-                </div>
+                <label for="quantity">수량:</label>
+                <input type="number" id="quantity" min="1" value="1">
             </div>
 
             <div class="form-group">
@@ -713,13 +659,19 @@
                 </tbody>
             </table>
 
+            <!-- 엑셀 저장 버튼 추가 -->
+            <div class="export-buttons">
+                <button onclick="exportStock()">재고 내역 엑셀 저장</button>
+                <button onclick="exportRecords()">입출고 기록 엑셀 저장</button>
+            </div>
+
             <h3 class="record-table">입출고 기록 내역</h3>
             <div class="table-container">
-                <table>
+                <table id="records-table"> <!-- id="records-table" 추가 -->
                     <thead>
                         <tr>
                             <th>이름</th>
-                            <th>1차 분류</th>
+                            <th>구분</th>
                             <th>매트 종류</th>
                             <th>색상</th>
                             <th>수량</th>
@@ -733,10 +685,6 @@
                     </tbody>
                 </table>
             </div>
-
-            <!-- 엑셀로 저장 버튼 두 개 추가 -->
-            <button id="export-stock-data" onclick="exportStockToExcel()">재고 현황 엑셀로 저장</button>
-            <button id="export-entry-data" onclick="exportEntriesToExcel()">입출고 기록 엑셀로 저장</button>
 
             <button id="clear-data" onclick="clearData()">초기화</button>
         </div>
