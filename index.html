@@ -11,7 +11,7 @@
     <style>
         /* 기본 스타일 */
         body {
-            font-family: 'Gowun Dodum', sans-serif;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
             background-color: #f2f2f2;
             margin: 0;
             padding: 10px;
@@ -76,6 +76,14 @@
             display: flex;
             flex-direction: column;
             margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background-color: #fafafa;
+            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
+        }
+        .form-group:not(:last-child) {
+            margin-bottom: 20px;
         }
         label {
             margin-bottom: 8px;
@@ -88,12 +96,14 @@
             border-radius: 8px;
             border: 1px solid #ddd;
             margin-bottom: 10px;
-            font-family: 'Gowun Dodum', sans-serif;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
             width: 100%;
             box-sizing: border-box;
             font-size: 18px;
             font-weight: bold;
             transition: border-color 0.3s ease;
+            color: #000000; /* 폰트 색상 검정 */
+            background-color: #ffffff; /* 배경색 흰색 */
         }
         select:focus, input[type="text"]:focus, input[type="number"]:focus {
             border-color: #6a9fb5;
@@ -106,11 +116,13 @@
             border: 1px solid #ddd;
             border-radius: 8px;
             resize: none;
-            font-family: 'Gowun Dodum', sans-serif;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
             margin-bottom: 10px;
             font-size: 18px;
             font-weight: bold;
             transition: border-color 0.3s ease;
+            color: #000000; /* 폰트 색상 검정 */
+            background-color: #ffffff; /* 배경색 흰색 */
         }
         textarea:focus {
             border-color: #6a9fb5;
@@ -132,7 +144,7 @@
             border-radius: 8px;
             cursor: pointer;
             font-size: 22px;
-            font-family: 'Gowun Dodum', sans-serif;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
             width: 45%;
             box-sizing: border-box;
             font-weight: bold;
@@ -150,7 +162,7 @@
             border-radius: 8px;
             cursor: pointer;
             font-size: 22px;
-            font-family: 'Gowun Dodum', sans-serif;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
             width: 45%;
             box-sizing: border-box;
             font-weight: bold;
@@ -166,7 +178,7 @@
             border-radius: 8px;
             color: white;
             font-size: 22px;
-            font-family: 'Gowun Dodum', sans-serif;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
             font-weight: bold;
             margin-top: 30px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -211,7 +223,7 @@
             padding: 12px;
             border-radius: 8px;
             font-size: 22px;
-            font-family: 'Gowun Dodum', sans-serif;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
             font-weight: bold;
             margin-top: 30px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -251,7 +263,7 @@
             font-size: 18px;
             width: 45%;
             box-sizing: border-box;
-            font-family: 'Gowun Dodum', sans-serif;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
             font-weight: bold;
             transition: background-color 0.3s ease;
         }
@@ -296,6 +308,12 @@
                 font-size: 16px;
                 padding: 12px;
             }
+            .quantity-group {
+                flex-direction: column; /* 모바일에서는 세로로 배치 */
+            }
+            .quantity-group .form-group {
+                width: 100%;
+            }
         }
         /* 글씨 가독성 향상 */
         .entry span {
@@ -303,7 +321,7 @@
             color: #555;
             font-weight: normal;
         }
-        /* 박스와 낱개 입력을 구분하기 위한 스타일 개선 */
+        /* 박스와 낱장 입력을 구분하기 위한 스타일 개선 */
         .quantity-group {
             display: flex;
             justify-content: space-between;
@@ -336,7 +354,7 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // 매트 종류별 박스당 낱개 수량 매핑
+        // 매트 종류별 박스당 낱장 수량 매핑
         const boxSizes = {
             "자이언트플러스": 4,
             "자이언트플러스 R": 4,
@@ -392,7 +410,7 @@
             const matName = document.getElementById("mat-name").value;
             const color = document.getElementById("mat-color").value;
             const boxInput = parseInt(document.getElementById("boxes").value) || 0; // 박스 입력
-            const pieceInput = parseInt(document.getElementById("pieces").value) || 0; // 낱개 입력
+            const pieceInput = parseInt(document.getElementById("pieces").value) || 0; // 낱장 입력
             const notes = document.getElementById("notes").value.trim();
 
             if (name && category && matName && color && (boxInput > 0 || pieceInput > 0)) {
@@ -410,7 +428,7 @@
                     notes, 
                     timestamp: Date.now(),
                     boxes: boxInput, // 박스 수량 저장 (추가)
-                    pieces: pieceInput // 낱개 수량 저장 (추가)
+                    pieces: pieceInput // 낱장 수량 저장 (추가)
                 };
 
                 // Firebase에 entry 추가
@@ -425,13 +443,14 @@
                         document.getElementById("custom-name").value = "";
                         document.getElementById("notes").value = "";
                         document.getElementById("boxes").value = "0"; // 박스 초기화
-                        document.getElementById("pieces").value = "0"; // 낱개 초기화
+                        document.getElementById("pieces").value = "0"; // 낱장 초기화
+                        alert("데이터가 성공적으로 저장되었습니다.");
                     })
                     .catch((error) => {
                         alert("데이터 저장 중 오류 발생: " + error.message);
                     });
             } else {
-                alert("모든 필드를 정확히 입력해주세요! (박스 또는 낱개 중 하나는 필수)");
+                alert("모든 필드를 정확히 입력해주세요! (박스 또는 낱장 중 하나는 필수)");
             }
         }
 
@@ -468,6 +487,7 @@
                     .then(() => {
                         displayRecentEntries();
                         loadAdminData();
+                        alert("입출고 내역이 초기화되었습니다.");
                     })
                     .catch((error) => {
                         alert("데이터 초기화 중 오류 발생: " + error.message);
@@ -664,7 +684,7 @@
                 </select>
             </div>
 
-            <!-- 수량을 박스와 낱개로 분리 -->
+            <!-- 수량을 박스와 낱장로 분리 -->
             <div class="form-group">
                 <label>수량:</label>
                 <div class="quantity-group">
@@ -673,7 +693,7 @@
                         <input type="number" id="boxes" min="0" value="0" onfocus="clearValue(this)">
                     </div>
                     <div class="form-group">
-                        <label for="pieces">낱개:</label>
+                        <label for="pieces">낱장:</label>
                         <input type="number" id="pieces" min="0" value="0" onfocus="clearValue(this)">
                     </div>
                 </div>
