@@ -328,7 +328,7 @@
             color: #555;
             font-weight: normal;
         }
-        /* 박스와 낱개 입력을 구분하기 위한 스타일 개선 */
+        /* 박스와 낱장 입력을 구분하기 위한 스타일 개선 */
         .quantity-group {
             display: flex;
             justify-content: space-between;
@@ -376,7 +376,7 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // 매트 종류별 박스당 낱개 수량 매핑
+        // 매트 종류별 박스당 낱장 수량 매핑
         const boxSizes = {
             "자이언트플러스": 4,
             "자이언트플러스 R": 4,
@@ -435,7 +435,7 @@
             const matName = document.getElementById("mat-name").value;
             const color = document.getElementById("mat-color").value;
             const boxInput = parseInt(document.getElementById("boxes").value) || 0; // 박스 입력
-            const pieceInput = parseInt(document.getElementById("pieces").value) || 0; // 낱개 입력
+            const pieceInput = parseInt(document.getElementById("pieces").value) || 0; // 낱장 입력
             const notes = document.getElementById("notes").value.trim();
 
             if (name && category && matName && color && (boxInput > 0 || pieceInput > 0)) {
@@ -453,7 +453,7 @@
                     notes, 
                     timestamp: Date.now(),
                     boxes: boxInput, // 박스 수량 저장 (추가)
-                    pieces: pieceInput // 낱개 수량 저장 (추가)
+                    pieces: pieceInput // 낱장 수량 저장 (추가)
                 };
 
                 // Firebase에 entry 추가
@@ -468,7 +468,7 @@
                         document.getElementById("custom-name").value = "";
                         document.getElementById("notes").value = "";
                         document.getElementById("boxes").value = "0"; // 박스 초기화
-                        document.getElementById("pieces").value = "0"; // 낱개 초기화
+                        document.getElementById("pieces").value = "0"; // 낱장 초기화
                         document.getElementById("total-quantity").innerText = "0"; // 총 수량 초기화
                         alert("데이터가 성공적으로 저장되었습니다.");
                     })
@@ -476,7 +476,7 @@
                         alert("데이터 저장 중 오류 발생: " + error.message);
                     });
             } else {
-                alert("모든 필드를 정확히 입력해주세요! (박스 또는 낱개 중 하나는 필수)");
+                alert("모든 필드를 정확히 입력해주세요! (박스 또는 낱장 중 하나는 필수)");
             }
         }
 
@@ -730,7 +730,7 @@
                 </select>
             </div>
 
-            <!-- 수량을 박스와 낱개로 분리 -->
+            <!-- 수량을 박스와 낱장로 분리 -->
             <div class="form-group">
                 <div class="quantity-group">
                     <div class="form-group">
@@ -738,7 +738,7 @@
                         <input type="number" id="boxes" min="0" value="0" onfocus="clearValue(this)">
                     </div>
                     <div class="form-group">
-                        <label for="pieces">낱개:</label>
+                        <label for="pieces">낱장:</label>
                         <input type="number" id="pieces" min="0" value="0" onfocus="clearValue(this)">
                     </div>
                 </div>
