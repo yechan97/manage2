@@ -148,7 +148,7 @@
             background-color: #D32F2F; /* 진한 빨간색 */
         }
         /* 엑셀 저장 버튼 스타일 */
-        button#export-data {
+        button#export-stock-data, button#export-entry-data {
             padding: 12px 25px;
             background-color: #2196F3; /* 파란색 */
             color: #ffffff;
@@ -157,12 +157,12 @@
             cursor: pointer;
             font-size: 18px;
             font-weight: bold;
-            width: 100%;
+            width: 48%;
             box-sizing: border-box;
             text-align: center;
             margin-top: 10px;
         }
-        button#export-data:hover {
+        button#export-stock-data:hover, button#export-entry-data:hover {
             background-color: #1976D2; /* 진한 파란색 */
         }
         .recent-entries h3 {
@@ -258,7 +258,7 @@
                 font-size: 16px;
                 padding: 12px;
             }
-            .nav-buttons button, button.action-button-in, button.action-button-out, button#clear-data, button#export-data {
+            .nav-buttons button, button.action-button-in, button.action-button-out, button#clear-data, button#export-stock-data, button#export-entry-data {
                 font-size: 16px;
                 padding: 12px 18px;
             }
@@ -280,12 +280,30 @@
             font-weight: normal;
         }
         /* 박스와 낱장 입력 라벨 스타일 */
-        .quantity-labels {
+        .quantity-inputs {
             display: flex;
-            justify-content: space-between;
-            font-size: 14px;
+            gap: 10px;
+        }
+        .quantity-input {
+            flex: 1;
+            position: relative;
+        }
+        .quantity-input input {
+            width: 100%;
+        }
+        .quantity-input::after {
+            content: attr(data-label);
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
             color: #888;
-            margin-top: 5px;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        .quantity-input input:focus::after,
+        .quantity-input input:not(:placeholder-shown)::after {
+            opacity: 0;
         }
     </style>
     
@@ -555,18 +573,29 @@
         }
 
         // 엑셀로 저장 기능
-        function exportToExcel() {
-            // 재고 테이블과 기록 테이블 가져오기
+        function exportStockToExcel() {
             const stockTable = document.getElementById("stock-table");
-            const recordTable = document.querySelector(".record-table + div table");
-
-            // HTML 테이블을 워크시트로 변환
             const stockSheet = XLSX.utils.table_to_sheet(stockTable);
-            const recordSheet = XLSX.utils.table_to_sheet(recordTable);
-
-            // 새로운 워크북 생성
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, stockSheet, "재고 현황");
+
+            // 현재 날짜와 시간으로 파일명 생성
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const filename = `${year}${month}${day}_${hours}${minutes}_재고현황.xlsx`;
+
+            // 워크북을 엑셀 파일로 저장
+            XLSX.writeFile(wb, filename);
+        }
+
+        function exportEntriesToExcel() {
+            const recordTable = document.querySelector(".record-table + div table");
+            const recordSheet = XLSX.utils.table_to_sheet(recordTable);
+            const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, recordSheet, "입출고 기록");
 
             // 현재 날짜와 시간으로 파일명 생성
@@ -576,7 +605,7 @@
             const day = String(now.getDate()).padStart(2, '0');
             const hours = String(now.getHours()).padStart(2, '0');
             const minutes = String(now.getMinutes()).padStart(2, '0');
-            const filename = `${year}${month}${day}_${hours}${minutes}_재고내역.xlsx`;
+            const filename = `${year}${month}${day}_${hours}${minutes}_입출고기록.xlsx`;
 
             // 워크북을 엑셀 파일로 저장
             XLSX.writeFile(wb, filename);
@@ -636,11 +665,13 @@
 
             <div class="form-group">
                 <label>수량:</label>
-                <input type="number" id="box-quantity" min="0" value="0" placeholder="박스 수">
-                <input type="number" id="single-quantity" min="0" value="0" placeholder="낱장 수">
-                <div class="quantity-labels">
-                    <span>박스</span>
-                    <span>낱장</span>
+                <div class="quantity-inputs">
+                    <div class="quantity-input" data-label="박스">
+                        <input type="number" id="box-quantity" min="0" value="0" placeholder="박스">
+                    </div>
+                    <div class="quantity-input" data-label="낱장">
+                        <input type="number" id="single-quantity" min="0" value="0" placeholder="낱장">
+                    </div>
                 </div>
             </div>
 
@@ -703,8 +734,9 @@
                 </table>
             </div>
 
-            <!-- 엑셀로 저장 버튼 추가 -->
-            <button id="export-data" onclick="exportToExcel()">엑셀로 저장</button>
+            <!-- 엑셀로 저장 버튼 두 개 추가 -->
+            <button id="export-stock-data" onclick="exportStockToExcel()">재고 현황 엑셀로 저장</button>
+            <button id="export-entry-data" onclick="exportEntriesToExcel()">입출고 기록 엑셀로 저장</button>
 
             <button id="clear-data" onclick="clearData()">초기화</button>
         </div>
