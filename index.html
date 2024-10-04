@@ -9,6 +9,7 @@
     <!-- SheetJS 라이브러리 추가 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
+        /* 기존 스타일 유지 */
         body {
             font-family: 'Gowun Dodum', sans-serif;
             background-color: #f2f2f2;
@@ -286,6 +287,15 @@
             color: #555;
             font-weight: normal;
         }
+        /* 박스와 낱개 입력을 구분하기 위한 스타일 추가 */
+        .quantity-group {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .quantity-group .form-group {
+            flex: 1;
+        }
     </style>
     
     <!-- Firebase SDK 추가 -->
@@ -307,6 +317,16 @@
         // Firebase 초기화
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+
+        // 매트 종류별 박스당 낱개 수량 매핑
+        const boxSizes = {
+            "자이언트플러스": 4,
+            "자이언트플러스 R": 4,
+            "자이언트플러스 0.5T": 4,
+            "빅토리매트": 3,
+            "빅토리매트 R": 3,
+            "빅토리매트 0.5T": 3
+        };
 
         const matMapping = {
             "정상": "",
@@ -353,19 +373,26 @@
             const category = document.getElementById("mat-type").value;
             const matName = document.getElementById("mat-name").value;
             const color = document.getElementById("mat-color").value;
-            const quantity = parseInt(document.getElementById("quantity").value);
+            const boxInput = parseInt(document.getElementById("boxes").value) || 0; // 박스 입력
+            const pieceInput = parseInt(document.getElementById("pieces").value) || 0; // 낱개 입력
             const notes = document.getElementById("notes").value.trim();
 
-            if (name && category && matName && color && quantity) {
+            if (name && category && matName && color && (boxInput > 0 || pieceInput > 0)) {
+                const matFullName = getMatName(category, matName);
+                const boxSize = boxSizes[matFullName] || 1; // 매트 종류에 따른 박스 크기, 기본값 1
+                const totalQuantity = (boxInput * boxSize) + pieceInput;
+
                 const entry = { 
                     name, 
                     category, 
-                    matName, 
+                    matName: matFullName, 
                     color, 
-                    quantity, 
+                    quantity: totalQuantity, 
                     type, 
                     notes, 
-                    timestamp: Date.now() 
+                    timestamp: Date.now(),
+                    boxes: boxInput, // 박스 수량 저장 (추가)
+                    pieces: pieceInput // 낱개 수량 저장 (추가)
                 };
 
                 // Firebase에 entry 추가
@@ -379,13 +406,14 @@
                         document.getElementById("custom-name").style.display = "none";
                         document.getElementById("custom-name").value = "";
                         document.getElementById("notes").value = "";
-                        document.getElementById("quantity").value = "1";
+                        document.getElementById("boxes").value = "0"; // 박스 초기화
+                        document.getElementById("pieces").value = "0"; // 낱개 초기화
                     })
                     .catch((error) => {
                         alert("데이터 저장 중 오류 발생: " + error.message);
                     });
             } else {
-                alert("모든 필드를 정확히 입력해주세요!");
+                alert("모든 필드를 정확히 입력해주세요! (박스 또는 낱개 중 하나는 필수)");
             }
         }
 
@@ -475,9 +503,9 @@
                             row.innerHTML = `
                                 <td>${entry.name}</td>
                                 <td>${entry.category}</td>
-                                <td>${getMatName(entry.category, entry.matName)}</td>
+                                <td>${entry.matName}</td>
                                 <td>${entry.color}</td>
-                                <td>${entry.quantity}</td>
+                                <td>${entry.quantity}장</td>
                                 <td>${entry.type}</td>
                                 <td>${entry.notes}</td>
                                 <td>${formattedTime}</td>
@@ -498,7 +526,7 @@
         }
 
         function updateStockData(entry) {
-            const matName = getMatName(entry.category, entry.matName);
+            const matName = entry.matName;
             if (stockData[matName] && stockData[matName][entry.color] !== undefined) {
                 if (entry.type === "입고") {
                     stockData[matName][entry.color] += parseInt(entry.quantity);
@@ -616,9 +644,21 @@
                     <option>솔리드그레이</option>
                     <option>베이지코튼</option>
                 </select>
+            </div>
 
-                <label for="quantity">수량:</label>
-                <input type="number" id="quantity" min="1" value="1">
+            <!-- 수량을 박스와 낱개로 분리 -->
+            <div class="form-group">
+                <label>수량:</label>
+                <div class="quantity-group">
+                    <div class="form-group">
+                        <label for="boxes">박스:</label>
+                        <input type="number" id="boxes" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="pieces">낱개:</label>
+                        <input type="number" id="pieces" min="0" value="0">
+                    </div>
+                </div>
             </div>
 
             <div class="form-group">
