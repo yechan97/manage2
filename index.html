@@ -171,6 +171,19 @@
         button.action-button-out:hover {
             background-color: #D32F2F; /* 진한 빨간색 */
         }
+        /* 총 수량 표시 스타일 */
+        .total-quantity {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #333333;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
+        }
         .recent-entries h3 {
             text-align: center;
             background-color: #8bc34a;
@@ -314,6 +327,10 @@
             .quantity-group .form-group {
                 width: 100%;
             }
+            .total-quantity {
+                font-size: 18px;
+                padding: 8px;
+            }
         }
         /* 글씨 가독성 향상 */
         .entry span {
@@ -321,7 +338,7 @@
             color: #555;
             font-weight: normal;
         }
-        /* 박스와 낱장 입력을 구분하기 위한 스타일 개선 */
+        /* 박스와 낱개 입력을 구분하기 위한 스타일 개선 */
         .quantity-group {
             display: flex;
             justify-content: space-between;
@@ -354,7 +371,7 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // 매트 종류별 박스당 낱장 수량 매핑
+        // 매트 종류별 박스당 낱개 수량 매핑
         const boxSizes = {
             "자이언트플러스": 4,
             "자이언트플러스 R": 4,
@@ -383,6 +400,7 @@
             displayRecentEntries();
             loadAdminData();
             resetEntriesOnHour();
+            setupEventListeners(); // 이벤트 리스너 설정
         });
 
         function toggleCustomInput(selectedValue) {
@@ -410,7 +428,7 @@
             const matName = document.getElementById("mat-name").value;
             const color = document.getElementById("mat-color").value;
             const boxInput = parseInt(document.getElementById("boxes").value) || 0; // 박스 입력
-            const pieceInput = parseInt(document.getElementById("pieces").value) || 0; // 낱장 입력
+            const pieceInput = parseInt(document.getElementById("pieces").value) || 0; // 낱개 입력
             const notes = document.getElementById("notes").value.trim();
 
             if (name && category && matName && color && (boxInput > 0 || pieceInput > 0)) {
@@ -428,7 +446,7 @@
                     notes, 
                     timestamp: Date.now(),
                     boxes: boxInput, // 박스 수량 저장 (추가)
-                    pieces: pieceInput // 낱장 수량 저장 (추가)
+                    pieces: pieceInput // 낱개 수량 저장 (추가)
                 };
 
                 // Firebase에 entry 추가
@@ -443,14 +461,15 @@
                         document.getElementById("custom-name").value = "";
                         document.getElementById("notes").value = "";
                         document.getElementById("boxes").value = "0"; // 박스 초기화
-                        document.getElementById("pieces").value = "0"; // 낱장 초기화
+                        document.getElementById("pieces").value = "0"; // 낱개 초기화
+                        updateTotalQuantity(); // 총 수량 업데이트
                         alert("데이터가 성공적으로 저장되었습니다.");
                     })
                     .catch((error) => {
                         alert("데이터 저장 중 오류 발생: " + error.message);
                     });
             } else {
-                alert("모든 필드를 정확히 입력해주세요! (박스 또는 낱장 중 하나는 필수)");
+                alert("모든 필드를 정확히 입력해주세요! (박스 또는 낱개 중 하나는 필수)");
             }
         }
 
@@ -630,6 +649,34 @@
             const filename = `${formattedDate}_입출고기록.xlsx`;
             XLSX.writeFile(workbook, filename);
         }
+
+        // 이벤트 리스너 설정 함수
+        function setupEventListeners() {
+            const boxesInput = document.getElementById("boxes");
+            const piecesInput = document.getElementById("pieces");
+            const matTypeSelect = document.getElementById("mat-type");
+            const matNameSelect = document.getElementById("mat-name");
+
+            boxesInput.addEventListener("input", updateTotalQuantity);
+            piecesInput.addEventListener("input", updateTotalQuantity);
+            matTypeSelect.addEventListener("change", updateTotalQuantity);
+            matNameSelect.addEventListener("change", updateTotalQuantity);
+        }
+
+        // 총 수량 업데이트 함수
+        function updateTotalQuantity() {
+            const category = document.getElementById("mat-type").value;
+            const matName = document.getElementById("mat-name").value;
+            const matFullName = getMatName(category, matName);
+            const boxSize = boxSizes[matFullName] || 1;
+
+            const boxInput = parseInt(document.getElementById("boxes").value) || 0;
+            const pieceInput = parseInt(document.getElementById("pieces").value) || 0;
+            const totalQuantity = (boxInput * boxSize) + pieceInput;
+
+            const totalQuantityDisplay = document.getElementById("total-quantity");
+            totalQuantityDisplay.textContent = `총 수량: ${totalQuantity}장`;
+        }
     </script>
 </head>
 <body>
@@ -643,6 +690,9 @@
         <!-- Input Section -->
         <div id="input-section">
             <h1 class="input-header">토리매트 입/출고</h1>
+
+            <!-- 총 수량 표시 -->
+            <div class="total-quantity" id="total-quantity">총 수량: 0장</div>
 
             <div class="form-group">
                 <label for="name-select">성명:</label>
@@ -684,7 +734,7 @@
                 </select>
             </div>
 
-            <!-- 수량을 박스와 낱장로 분리 -->
+            <!-- 수량을 박스와 낱개로 분리 -->
             <div class="form-group">
                 <label>수량:</label>
                 <div class="quantity-group">
@@ -693,7 +743,7 @@
                         <input type="number" id="boxes" min="0" value="0" onfocus="clearValue(this)">
                     </div>
                     <div class="form-group">
-                        <label for="pieces">낱장:</label>
+                        <label for="pieces">낱개:</label>
                         <input type="number" id="pieces" min="0" value="0" onfocus="clearValue(this)">
                     </div>
                 </div>
