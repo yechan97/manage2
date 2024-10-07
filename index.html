@@ -9,8 +9,349 @@
     <!-- SheetJS 라이브러리 추가 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        /* 기존 CSS 내용 유지 */
-        /* ... (생략) ... */
+        /* 기본 스타일 */
+        body {
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            background-color: #fdf6f0; /* 파스텔 베이지 톤 */
+            margin: 0;
+            padding: 10px;
+            overflow-x: hidden; /* 불필요한 가로 스크롤 방지 */
+        }
+        .container {
+            width: 100%;
+            max-width: 900px; /* 넓이를 약간 늘려 더 여유로운 레이아웃 */
+            margin: auto;
+            background: #ffffff;
+            border-radius: 15px; /* 둥근 테두리 */
+            padding: 25px; /* 패딩 증가 */
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); /* 그림자 효과 강화 */
+            box-sizing: border-box;
+        }
+        /* 입력 및 관리 섹션 헤더 */
+        .input-header, .admin-header {
+            text-align: center;
+            padding: 20px;
+            color: #ffffff;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            font-size: 28px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        /* 토리매트 입/출고 헤더: 부드러운 파스텔 블루 */
+        .input-header {
+            background-color: #a8d5e2; /* 파스텔 블루 */
+        }
+        /* 재고 관리 페이지 헤더: 부드러운 파스텔 그린 */
+        .admin-header {
+            background-color: #b3e5d8; /* 파스텔 그린 */
+        }
+        /* Navigation Styles */
+        .nav-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+        .nav-buttons button {
+            padding: 15px 25px;
+            background-color: #ffc1a1; /* 파스텔 오렌지 */
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 20px;
+            width: 45%;
+            box-sizing: border-box;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .nav-buttons button:hover {
+            background-color: #ff8c69; /* 더 진한 파스텔 오렌지 */
+        }
+        /* Form Styles */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #fff8f0; /* 아주 연한 파스텔 오렌지 */
+            border-radius: 8px;
+        }
+        .form-group:not(:last-child) {
+            margin-bottom: 20px;
+        }
+        label {
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 20px;
+            color: #555555; /* 진한 회색 */
+        }
+        select, input[type="text"], input[type="number"] {
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 18px;
+            font-weight: bold;
+            transition: border-color 0.3s ease;
+            color: #333333; /* 다크 그레이 */
+            background-color: #ffffff; /* 흰색 배경 */
+        }
+        select:focus, input[type="text"]:focus, input[type="number"]:focus {
+            border-color: #a8d5e2; /* 파스텔 블루 */
+            outline: none;
+        }
+        textarea {
+            width: 100%;
+            height: 80px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            resize: none;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            margin-bottom: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            transition: border-color 0.3s ease;
+            color: #333333; /* 다크 그레이 */
+            background-color: #ffffff; /* 흰색 배경 */
+        }
+        textarea:focus {
+            border-color: #a8d5e2; /* 파스텔 블루 */
+            outline: none;
+        }
+        .buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+        /* 입고 버튼: 파스텔 그린 */
+        button.action-button-in {
+            padding: 15px 30px;
+            background-color: #a8e6cf; /* 파스텔 그린 */
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 22px;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            width: 45%;
+            box-sizing: border-box;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        button.action-button-in:hover {
+            background-color: #56c596; /* 더 진한 파스텔 그린 */
+        }
+        /* 출고 버튼: 파스텔 레드 */
+        button.action-button-out {
+            padding: 15px 30px;
+            background-color: #ffaaa5; /* 파스텔 레드 */
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 22px;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            width: 45%;
+            box-sizing: border-box;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        button.action-button-out:hover {
+            background-color: #ff6b6b; /* 더 진한 파스텔 레드 */
+        }
+        .recent-entries h3 {
+            text-align: center;
+            background-color: #b3e5d8; /* 파스텔 그린 */
+            padding: 18px;
+            border-radius: 8px;
+            color: white;
+            font-size: 22px;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            font-weight: bold;
+            margin-top: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .entry {
+            background: #dcedc1; /* 아주 연한 파스텔 그린 */
+            margin: 12px 0;
+            padding: 15px;
+            font-size: 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            word-wrap: break-word; /* 긴 단어가 있을 경우 줄바꿈 */
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+        }
+        /* 총 수량 스타일 */
+        .total-quantity {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .total-quantity label {
+            font-size: 20px;
+            color: #555555; /* 진한 회색 */
+        }
+        .total-quantity span {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333333; /* 다크 그레이 */
+        }
+        /* Admin Page Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 16px;
+            text-align: center;
+            color: #333333; /* 다크 그레이 */
+            font-size: 18px;
+            font-weight: bold;
+        }
+        th {
+            background-color: #a8d5e2; /* 파스텔 블루 */
+            color: #ffffff;
+        }
+        .total-cell {
+            background-color: #b3e5d8; /* 파스텔 그린 */
+            font-weight: bold;
+            color: #2e7d32; /* 다크 그린 */
+        }
+        .record-table h3 {
+            text-align: center;
+            background-color: #b3e5d8; /* 파스텔 그린 */
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 22px;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            font-weight: bold;
+            margin-top: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        button#clear-data {
+            margin-top: 25px;
+            padding: 15px 30px;
+            background-color: #ffc1a1; /* 파스텔 오렌지 */
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 20px;
+            font-weight: bold;
+            width: 100%;
+            box-sizing: border-box;
+            transition: background-color 0.3s ease;
+        }
+        button#clear-data:hover {
+            background-color: #ff8c69; /* 더 진한 파스텔 오렌지 */
+        }
+        /* 엑셀 저장 버튼 스타일 */
+        .export-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        .export-buttons button {
+            padding: 12px 25px;
+            background-color: #a8d5e2; /* 파스텔 블루 */
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            width: 45%;
+            box-sizing: border-box;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .export-buttons button:hover {
+            background-color: #6fb1d8; /* 더 진한 파스텔 블루 */
+        }
+        /* Hide sections */
+        .hidden {
+            display: none;
+        }
+        /* 테이블을 감싸는 div에 가로 스크롤 추가 */
+        .table-container {
+            overflow-x: auto;
+        }
+        /* 모바일 최적화 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px; /* 패딩 축소 */
+            }
+            h1 {
+                font-size: 24px;
+                padding: 15px;
+            }
+            label {
+                font-size: 18px;
+            }
+            select, input[type="text"], input[type="number"], textarea {
+                font-size: 16px;
+                padding: 12px;
+            }
+            .nav-buttons button, button.action-button-in, button.action-button-out, button#clear-data, .export-buttons button {
+                font-size: 16px;
+                padding: 12px 20px;
+            }
+            .recent-entries h3, .record-table h3 {
+                font-size: 20px;
+            }
+            .entry {
+                font-size: 16px;
+            }
+            th, td {
+                font-size: 16px;
+                padding: 12px;
+            }
+            .quantity-group {
+                flex-direction: column; /* 모바일에서는 세로로 배치 */
+                gap: 5px; /* 간격 더욱 줄이기 */
+            }
+            .quantity-group .form-group {
+                width: 100%;
+                padding: 5px; /* 패딩 줄이기 */
+            }
+            .total-quantity {
+                font-size: 18px;
+                gap: 5px; /* 간격 줄이기 */
+            }
+        }
+        /* 글씨 가독성 향상 */
+        .entry span {
+            font-size: 14px;
+            color: #555;
+            font-weight: normal;
+        }
+        /* 박스와 낱장 입력을 구분하기 위한 스타일 개선 */
+        .quantity-group {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px; /* 기본 간격 */
+            flex-wrap: wrap; /* 모바일에서도 잘 보이도록 */
+        }
+        .quantity-group .form-group {
+            flex: 1;
+            min-width: 120px; /* 최소 너비 설정 */
+        }
     </style>
     
     <!-- Firebase SDK 추가 -->
@@ -61,7 +402,7 @@
         document.addEventListener("DOMContentLoaded", () => {
             displayRecentEntries();
             loadAdminData();
-            resetEntriesDaily(); // 함수 이름 변경
+            resetEntriesDaily(); // 함수 이름 변경 및 일일 초기화
             calculateTotalQuantity(); // 초기 총 수량 계산
             addEventListeners(); // 이벤트 리스너 추가
         });
