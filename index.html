@@ -499,7 +499,7 @@
             "이사님",
             "전라지사",
             "관리자",
-            "토리매트"
+            "신입"
         ];
 
         // 매트 종류별 박스당 낱장 수량 매핑
@@ -716,8 +716,8 @@
                     const entries = snapshot.val();
                     if (entries) {
                         const entriesArray = Object.values(entries);
-                        // 최신 순으로 정렬
-                        entriesArray.sort((a, b) => b.timestamp - a.timestamp);
+                        // **오래된 순으로 정렬 (오름차순)**
+                        entriesArray.sort((a, b) => a.timestamp - b.timestamp);
                         entriesArray.forEach(entry => {
                             const formattedTime = formatTimestamp(entry.timestamp);
                             recentContainer.innerHTML += `<div class="entry">${entry.name} | ${entry.category} | ${entry.matName} | ${entry.color} | ${entry.quantity}장 (${entry.type}) | ${entry.notes} | <span>${formattedTime}</span></div>`;
@@ -784,8 +784,8 @@
                     const adminEntries = snapshot.val();
                     if (adminEntries) {
                         const entriesArray = Object.values(adminEntries);
-                        // 최신 순으로 정렬
-                        entriesArray.sort((a, b) => b.timestamp - a.timestamp);
+                        // **오래된 순으로 정렬 (오름차순)**
+                        entriesArray.sort((a, b) => a.timestamp - b.timestamp);
                         entriesArray.forEach(entry => {
                             const formattedTime = formatTimestamp(entry.timestamp);
                             const row = document.createElement("tr");
@@ -868,6 +868,46 @@
         function exportStock() {
             const table = document.getElementById('stock-table');
             const workbook = XLSX.utils.table_to_book(table, {sheet:"재고내역"});
+
+            // 워크시트 가져오기
+            const worksheet = workbook.Sheets["재고내역"];
+
+            // 헤더 스타일링: 첫 번째 행을 굵게(Bold)
+            const range = XLSX.utils.decode_range(worksheet['!ref']);
+            for(let C = range.s.c; C <= range.e.c; ++C) {
+                const cell_address = {c: C, r: 0};
+                const cell_ref = XLSX.utils.encode_cell(cell_address);
+                if(!worksheet[cell_ref]) continue;
+                if(!worksheet[cell_ref].s) worksheet[cell_ref].s = {};
+                worksheet[cell_ref].s.font = { bold: true };
+            }
+
+            // 열 너비 설정
+            worksheet['!cols'] = [
+                { wch: 20 }, // 매트 종류
+                { wch: 20 }, // 프렌치바닐라
+                { wch: 20 }, // 솔리드그레이
+                { wch: 20 }, // 베이지코튼
+                { wch: 10 }  // 합계
+            ];
+
+            // 수량과 합계에서 '장' 제거
+            for(let R = 1; R <= range.e.r; ++R) { // 첫 번째 행은 헤더이므로 1부터 시작
+                // 합계 컬럼 (5번째 컬럼, 인덱스 4)
+                const cellRefQty = XLSX.utils.encode_cell({c: 4, r: R});
+                if(worksheet[cellRefQty] && typeof worksheet[cellRefQty].v === 'string') {
+                    const num = parseInt(worksheet[cellRefQty].v.replace('장', '').trim());
+                    if(!isNaN(num)) {
+                        worksheet[cellRefQty].v = num;
+                        worksheet[cellRefQty].t = 'n'; // 숫자 타입으로 설정
+                    }
+                }
+            }
+
+            // 워크북에 수정된 워크시트 다시 설정
+            workbook.Sheets["재고내역"] = worksheet;
+
+            // 워크북 저장
             const date = new Date();
             const formattedDate = `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2,'0')}${date.getDate().toString().padStart(2,'0')}`;
             const filename = `${formattedDate}_재고내역.xlsx`;
@@ -876,8 +916,51 @@
 
         // 엑셀 저장 함수: 입출고 기록
         function exportRecords() {
-            const table = document.getElementById('records-table'); // records-table id 추가 필요
+            const table = document.getElementById('records-table');
             const workbook = XLSX.utils.table_to_book(table, {sheet:"입출고기록"});
+
+            // 워크시트 가져오기
+            const worksheet = workbook.Sheets["입출고기록"];
+
+            // 헤더 스타일링: 첫 번째 행을 굵게(Bold)
+            const range = XLSX.utils.decode_range(worksheet['!ref']);
+            for(let C = range.s.c; C <= range.e.c; ++C) {
+                const cell_address = {c: C, r: 0};
+                const cell_ref = XLSX.utils.encode_cell(cell_address);
+                if(!worksheet[cell_ref]) continue;
+                if(!worksheet[cell_ref].s) worksheet[cell_ref].s = {};
+                worksheet[cell_ref].s.font = { bold: true };
+            }
+
+            // 열 너비 설정
+            worksheet['!cols'] = [
+                { wch: 15 }, // 이름
+                { wch: 15 }, // 구분
+                { wch: 20 }, // 매트 종류
+                { wch: 15 }, // 색상
+                { wch: 10 }, // 수량
+                { wch: 10 }, // 입출고
+                { wch: 25 }, // 비고
+                { wch: 15 }  // 작성시간
+            ];
+
+            // 수량에서 '장' 제거
+            for(let R = 1; R <= range.e.r; ++R) { // 첫 번째 행은 헤더이므로 1부터 시작
+                // 수량 컬럼 (5번째 컬럼, 인덱스 4)
+                const cellRefQty = XLSX.utils.encode_cell({c: 4, r: R});
+                if(worksheet[cellRefQty] && typeof worksheet[cellRefQty].v === 'string') {
+                    const num = parseInt(worksheet[cellRefQty].v.replace('장', '').trim());
+                    if(!isNaN(num)) {
+                        worksheet[cellRefQty].v = num;
+                        worksheet[cellRefQty].t = 'n'; // 숫자 타입으로 설정
+                    }
+                }
+            }
+
+            // 워크북에 수정된 워크시트 다시 설정
+            workbook.Sheets["입출고기록"] = worksheet;
+
+            // 워크북 저장
             const date = new Date();
             const formattedDate = `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2,'0')}${date.getDate().toString().padStart(2,'0')}`;
             const filename = `${formattedDate}_입출고기록.xlsx`;
@@ -1061,5 +1144,6 @@
                 }
             }
         </script>
-    </body>
+    </div>
+</body>
 </html>
