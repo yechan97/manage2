@@ -417,24 +417,12 @@
             }
             /* 헤더 섹션 레이아웃 조정 */
             .header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 20px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
             }
             .logout-button {
-                padding: 10px 20px;
-                background-color: #ff5252; /* 빨간색 */
-                color: #ffffff;
-                border: none;
-                border-radius: 8px;
-                cursor: pointer;
-                font-size: 16px;
-                font-weight: bold;
-                transition: background-color 0.3s ease;
-            }
-            .logout-button:hover {
-                background-color: #e53935; /* 더 진한 빨간색 */
+                align-self: flex-end;
             }
         }
         /* 글씨 가독성 향상 */
@@ -469,6 +457,13 @@
         .logout-button:hover {
             background-color: #e53935; /* 더 진한 빨간색 */
         }
+        /* 헤더 섹션 스타일 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
     </style>
     
     <!-- Firebase SDK 추가 -->
@@ -490,6 +485,22 @@
         // Firebase 초기화
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+
+        // 허용된 이름 목록
+        const allowedNames = [
+            "김수재",
+            "용석화",
+            "방춘혁",
+            "정승훈",
+            "문경훈",
+            "홍기주",
+            "한지석",
+            "최동선",
+            "이사님",
+            "전라지사",
+            "관리자",
+            "신입"
+        ];
 
         // 매트 종류별 박스당 낱장 수량 매핑
         const boxSizes = {
@@ -563,16 +574,24 @@
                 return;
             }
 
-            // 비밀번호 검증
-            if (password !== "0074" && password !== "9998") {
-                displayLoginError("비밀번호가 올바르지 않습니다.");
+            // 이름 허용 여부 확인
+            if (!allowedNames.includes(name)) {
+                displayLoginError("허용되지 않은 이름입니다.");
                 return;
             }
 
-            // 관리자 권한 설정
-            if (password === "9998") {
+            // 비밀번호 검증
+            if (name === "관리자") {
+                if (password !== "9998") {
+                    displayLoginError("비밀번호가 올바르지 않습니다.");
+                    return;
+                }
                 isAdmin = true;
             } else {
+                if (password !== "0074") {
+                    displayLoginError("비밀번호가 올바르지 않습니다.");
+                    return;
+                }
                 isAdmin = false;
             }
 
@@ -1033,7 +1052,7 @@
                 <button id="clear-data" onclick="clearData()">초기화</button>
             </div>
         </div>
-    
+
         <script>
             // 입력 필드 클릭 시 기본 값 0 제거
             function clearValue(element) {
@@ -1042,6 +1061,5 @@
                 }
             }
         </script>
-    </div>
-</body>
+    </body>
 </html>
