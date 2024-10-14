@@ -506,17 +506,17 @@
             "최동선",
             "이사님",
             "전라지사",
-            "신입"
+            "관리자"
         ];
 
         // 매트 종류별 박스당 낱장 수량 매핑
         const boxSizes = {
             "자이언트플러스": 4,
-            "자이언트플러스 R": 4,
-            "자이언트플러스 0.5T": 4,
+            "자이언트플러스_R": 4,
+            "자이언트플러스_0_5T": 4,
             "빅토리매트": 3,
-            "빅토리매트 R": 3,
-            "빅토리매트 0.5T": 3
+            "빅토리매트_R": 3,
+            "빅토리매트_0_5T": 3
         };
 
         const matMapping = {
@@ -664,7 +664,7 @@
             const notes = document.getElementById("notes").value.trim();
 
             if (currentUserName && category && matName && color && (boxInput > 0 || pieceInput > 0)) {
-                const matFullName = getMatName(category, matName);
+                const matFullName = getMatName(category, matName); // 유효화된 이름
                 const boxSize = boxSizes[matFullName] || 1; // 매트 종류에 따른 박스 크기, 기본값 1
                 const totalQuantity = (boxInput * boxSize) + pieceInput;
 
@@ -812,7 +812,7 @@
                         matTypes.forEach(mat => {
                             const matColors = stockArray.filter(item => item.matName === mat);
                             let row = document.createElement("tr");
-                            row.innerHTML = `<td>${mat}</td>`;
+                            row.innerHTML = `<td>${mat.replace(/_/g, ' ')}</td>`; // 원래 이름 복원
                             let total = 0;
                             ["프렌치바닐라", "솔리드그레이", "베이지코튼"].forEach(color => {
                                 const colorEntry = matColors.find(item => item.color === color);
@@ -832,21 +832,21 @@
                         });
 
                         // 차트 레이블 설정
-                        stockData.labels = matTypes;
+                        stockData.labels = matTypes.map(mat => mat.replace(/_/g, ' ')); // 원래 이름 복원
 
                         // 차트 업데이트
                         updateStockChart(stockData);
                     } else {
                         // 재고 데이터가 없을 때 기본 값 표시
-                        const matTypes = ["자이언트플러스", "자이언트플러스 R", "자이언트플러스 0.5T", "빅토리매트", "빅토리매트 R", "빅토리매트 0.5T"];
+                        const matTypes = ["자이언트플러스", "자이언트플러스 R", "자이언트플러스 0_5T", "빅토리매트", "빅토리매트 R", "빅토리매트 0_5T"];
                         matTypes.forEach(mat => {
                             const row = document.createElement("tr");
-                            row.innerHTML = `<td>${mat}</td><td>0장</td><td>0장</td><td>0장</td><td class="total-cell">0장</td>`;
+                            row.innerHTML = `<td>${mat.replace(/_/g, ' ')}</td><td>0장</td><td>0장</td><td>0장</td><td class="total-cell">0장</td>`;
                             stockTableBody.appendChild(row);
                         });
 
                         // 차트 레이블 설정
-                        stockData.labels = matTypes;
+                        stockData.labels = matTypes.map(mat => mat.replace(/_/g, ' '));
                         stockData.프렌치바닐라 = new Array(matTypes.length).fill(0);
                         stockData.솔리드그레이 = new Array(matTypes.length).fill(0);
                         stockData.베이지코튼 = new Array(matTypes.length).fill(0);
@@ -954,7 +954,7 @@
                             row.innerHTML = `
                                 <td>${entry.name}</td>
                                 <td>${entry.category}</td>
-                                <td>${entry.matName}</td>
+                                <td>${entry.matName.replace(/_/g, ' ')}</td>
                                 <td>${entry.color}</td>
                                 <td>${entry.quantity}장</td>
                                 <td>${entry.type}</td>
@@ -1030,7 +1030,8 @@
 
         function getMatName(category, type) {
             const suffix = matMapping[category] || "";
-            return `${type}${suffix}`;
+            // 모든 점(.)을 언더스코어(_)로 대체
+            return `${type}${suffix}`.replace(/\./g, '_');
         }
 
         // 초기화 버튼을 두 개로 분리
@@ -1150,7 +1151,7 @@
                         row.innerHTML = `
                             <td>${entry.name}</td>
                             <td>${entry.category}</td>
-                            <td>${entry.matName}</td>
+                            <td>${entry.matName.replace(/_/g, ' ')}</td>
                             <td>${entry.color}</td>
                             <td>${entry.quantity}장</td>
                             <td>${entry.type}</td>
@@ -1259,18 +1260,21 @@
 
                     // 모든 입출고 기록을 순회하여 재고 계산
                     Object.values(entries).forEach(entry => {
+                        // matFullName을 가져올 때 getMatName 함수를 사용하여 유효화
                         const { matName, color, quantity, type } = entry;
-                        if (!stockMap[matName]) {
-                            stockMap[matName] = {};
+                        const sanitizedMatName = matName.replace(/\./g, '_'); // 추가로 안전하게 대체
+
+                        if (!stockMap[sanitizedMatName]) {
+                            stockMap[sanitizedMatName] = {};
                         }
-                        if (!stockMap[matName][color]) {
-                            stockMap[matName][color] = 0;
+                        if (!stockMap[sanitizedMatName][color]) {
+                            stockMap[sanitizedMatName][color] = 0;
                         }
 
                         if (type === "입고") {
-                            stockMap[matName][color] += quantity;
+                            stockMap[sanitizedMatName][color] += quantity;
                         } else if (type === "출고") {
-                            stockMap[matName][color] -= quantity;
+                            stockMap[sanitizedMatName][color] -= quantity;
                         }
                     });
 
