@@ -82,6 +82,13 @@
             border-color: #a8d5e2; /* 파스텔 블루 */
             outline: none;
         }
+        .login-form .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 16px;
+            color: #555555;
+        }
         .login-form button {
             padding: 12px;
             background-color: #00796b; /* 짙은 청록색 */
@@ -479,9 +486,24 @@
         let currentUserName = "";
 
         document.addEventListener("DOMContentLoaded", () => {
-            // 초기 화면은 로그인 화면
-            document.getElementById("login-section").style.display = "flex";
-            document.getElementById("main-section").classList.add("hidden");
+            // 자동 로그인 체크
+            const loggedIn = localStorage.getItem("loggedIn");
+            const storedUserName = localStorage.getItem("userName");
+            if (loggedIn === "true" && storedUserName) {
+                currentUserName = storedUserName;
+                document.getElementById("login-section").style.display = "none";
+                document.getElementById("main-section").classList.remove("hidden");
+                // 초기화 및 데이터 로드
+                displayRecentEntries();
+                loadAdminData();
+                resetEntriesDaily(); // 함수 이름 변경 및 일일 초기화
+                calculateTotalQuantity(); // 초기 총 수량 계산
+                addEventListeners(); // 이벤트 리스너 추가
+            } else {
+                // 초기 화면은 로그인 화면
+                document.getElementById("login-section").style.display = "flex";
+                document.getElementById("main-section").classList.add("hidden");
+            }
 
             // 로그인 버튼 이벤트 리스너 추가
             document.getElementById("login-button").addEventListener("click", handleLogin);
@@ -490,23 +512,36 @@
                     handleLogin();
                 }
             });
-
-            // 기타 초기화 함수는 로그인 후에 호출
         });
 
         function handleLogin() {
             const name = document.getElementById("login-name").value.trim();
             const password = document.getElementById("login-password").value.trim();
+            const rememberMe = document.getElementById("remember-me").checked;
 
-            if (password === "0074") {
-                if (name === "") {
-                    displayLoginError("이름을 입력해주세요.");
-                    return;
-                }
+            if (name === "") {
+                displayLoginError("이름을 입력해주세요.");
+                return;
+            }
+
+            let requiredPassword = "0074";
+            const adminUsers = ["문경훈", "관리자"];
+            if (adminUsers.includes(name)) {
+                requiredPassword = "9998";
+            }
+
+            if (password === requiredPassword) {
                 currentUserName = name;
                 // 로그인 성공 시 화면 전환
                 document.getElementById("login-section").style.display = "none";
                 document.getElementById("main-section").classList.remove("hidden");
+
+                // 자동 로그인 설정
+                if (rememberMe) {
+                    localStorage.setItem("loggedIn", "true");
+                    localStorage.setItem("userName", currentUserName);
+                }
+
                 // 초기화 및 데이터 로드
                 displayRecentEntries();
                 loadAdminData();
@@ -791,6 +826,10 @@
                 <div>
                     <label for="login-password">비밀번호:</label>
                     <input type="password" id="login-password" placeholder="비밀번호를 입력하세요">
+                </div>
+                <div class="remember-me">
+                    <input type="checkbox" id="remember-me">
+                    <label for="remember-me">자동 로그인</label>
                 </div>
                 <button id="login-button">로그인</button>
                 <div id="login-error" class="login-error"></div>
