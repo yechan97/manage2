@@ -9,8 +9,461 @@
     <!-- SheetJS 라이브러리 추가 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        /* 기존 스타일 유지... (생략) */
-        /* ... 위의 스타일을 그대로 사용하세요 ... */
+        /* 전체 페이지 배경색 설정 */
+        body {
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            background-color: #e0f7fa; /* 연한 청록색 배경 */
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 900px; /* 넓이를 약간 늘려 더 여유로운 레이아웃 */
+            margin: auto;
+            background: #ffffff;
+            border-radius: 15px; /* 둥근 테두리 */
+            padding: 25px; /* 패딩 증가 */
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); /* 그림자 효과 강화 */
+            box-sizing: border-box;
+            position: relative;
+        }
+        /* 로그인 섹션 스타일 */
+        .login-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #e0f7fa; /* 전체 페이지 배경색과 동일 */
+        }
+        .login-section h2 {
+            margin-bottom: 20px;
+            font-size: 28px;
+            color: #00796b; /* 짙은 청록색 텍스트 */
+        }
+        .login-form {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background-color: #ffffff; /* 흰색 배경 */
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .login-form label {
+            font-weight: bold;
+            font-size: 18px;
+            color: #555555;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .login-form input[type="text"],
+        .login-form input[type="password"] {
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            font-size: 16px;
+            font-weight: bold;
+            transition: border-color 0.3s ease;
+            color: #333333; /* 다크 그레이 */
+            background-color: #ffffff; /* 흰색 배경 */
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .login-form input[type="text"]:focus,
+        .login-form input[type="password"]:focus {
+            border-color: #a8d5e2; /* 파스텔 블루 */
+            outline: none;
+        }
+        .login-form .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .login-form button {
+            padding: 12px;
+            background-color: #00796b; /* 짙은 청록색 */
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .login-form button:hover {
+            background-color: #004d40; /* 더 진한 청록색 */
+        }
+        /* 로그인 실패 메시지 */
+        .login-error {
+            color: red;
+            font-size: 14px;
+            text-align: center;
+        }
+        /* 입력 및 관리 섹션 헤더 */
+        .input-header, .admin-header {
+            text-align: center;
+            padding: 20px;
+            color: #ffffff;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            font-size: 28px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        /* 토리매트 입/출고 헤더: 부드러운 파스텔 블루 */
+        .input-header {
+            background-color: #a8d5e2; /* 파스텔 블루 */
+        }
+        /* 재고 관리 페이지 헤더: 부드러운 파스텔 그린 */
+        .admin-header {
+            background-color: #b3e5d8; /* 파스텔 그린 */
+        }
+        /* Navigation Styles */
+        .nav-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+        .nav-buttons button {
+            padding: 15px 25px;
+            background-color: #ffc1a1; /* 파스텔 오렌지 */
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 20px;
+            width: 45%;
+            box-sizing: border-box;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .nav-buttons button:hover {
+            background-color: #ff8c69; /* 더 진한 파스텔 오렌지 */
+        }
+        /* Form Styles */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #fff8f0; /* 아주 연한 파스텔 오렌지 */
+            border-radius: 8px;
+        }
+        .form-group:not(:last-child) {
+            margin-bottom: 20px;
+        }
+        label {
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 20px;
+            color: #555555; /* 진한 회색 */
+        }
+        select, input[type="text"], input[type="number"] {
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 18px;
+            font-weight: bold;
+            transition: border-color 0.3s ease;
+            color: #333333; /* 다크 그레이 */
+            background-color: #ffffff; /* 흰색 배경 */
+        }
+        select:focus, input[type="text"]:focus, input[type="number"]:focus {
+            border-color: #a8d5e2; /* 파스텔 블루 */
+            outline: none;
+        }
+        textarea {
+            width: 100%;
+            height: 80px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            resize: none;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            margin-bottom: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            transition: border-color 0.3s ease;
+            color: #333333; /* 다크 그레이 */
+            background-color: #ffffff; /* 흰색 배경 */
+        }
+        textarea:focus {
+            border-color: #a8d5e2; /* 파스텔 블루 */
+            outline: none;
+        }
+        .buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+        /* 입고 버튼: 파스텔 그린 */
+        button.action-button-in {
+            padding: 15px 30px;
+            background-color: #a8e6cf; /* 파스텔 그린 */
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 22px;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            width: 45%;
+            box-sizing: border-box;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        button.action-button-in:hover {
+            background-color: #56c596; /* 더 진한 파스텔 그린 */
+        }
+        /* 출고 버튼: 파스텔 레드 */
+        button.action-button-out {
+            padding: 15px 30px;
+            background-color: #ffaaa5; /* 파스텔 레드 */
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 22px;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            width: 45%;
+            box-sizing: border-box;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        button.action-button-out:hover {
+            background-color: #ff6b6b; /* 더 진한 파스텔 레드 */
+        }
+        .recent-entries h3 {
+            text-align: center;
+            background-color: #b3e5d8; /* 파스텔 그린 */
+            padding: 18px;
+            border-radius: 8px;
+            color: white;
+            font-size: 22px;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            font-weight: bold;
+            margin-top: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .entry {
+            background: #dcedc1; /* 아주 연한 파스텔 그린 */
+            margin: 12px 0;
+            padding: 15px;
+            font-size: 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            word-wrap: break-word; /* 긴 단어가 있을 경우 줄바꿈 */
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+        }
+        /* 총 수량 스타일 */
+        .total-quantity {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .total-quantity label {
+            font-size: 20px;
+            color: #555555; /* 진한 회색 */
+        }
+        .total-quantity span {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333333; /* 다크 그레이 */
+        }
+        /* Admin Page Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 16px;
+            text-align: center;
+            color: #333333; /* 다크 그레이 */
+            font-size: 18px;
+            font-weight: bold;
+        }
+        th {
+            background-color: #a8d5e2; /* 파스텔 블루 */
+            color: #ffffff;
+        }
+        .total-cell {
+            background-color: #b3e5d8; /* 파스텔 그린 */
+            font-weight: bold;
+            color: #2e7d32; /* 다크 그린 */
+        }
+        .record-table h3 {
+            text-align: center;
+            background-color: #b3e5d8; /* 파스텔 그린 */
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 22px;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            font-weight: bold;
+            margin-top: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        button#clear-entries, button#clear-stock {
+            margin-top: 25px;
+            padding: 15px 30px;
+            background-color: #ffc1a1; /* 파스텔 오렌지 */
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 20px;
+            font-weight: bold;
+            width: 45%;
+            box-sizing: border-box;
+            transition: background-color 0.3s ease;
+        }
+        button#clear-entries:hover, button#clear-stock:hover {
+            background-color: #ff8c69; /* 더 진한 파스텔 오렌지 */
+        }
+        /* 엑셀 저장 버튼 스타일 */
+        .export-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        .export-buttons button {
+            padding: 12px 25px;
+            background-color: #a8d5e2; /* 파스텔 블루 */
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            width: 45%;
+            box-sizing: border-box;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .export-buttons button:hover {
+            background-color: #6fb1d8; /* 더 진한 파스텔 블루 */
+        }
+        /* Hide sections */
+        .hidden {
+            display: none;
+        }
+        /* 테이블을 감싸는 div에 가로 스크롤 추가 */
+        .table-container {
+            overflow-x: auto;
+        }
+        /* 모바일 최적화 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px; /* 패딩 축소 */
+            }
+            h1, .login-section h2 {
+                font-size: 24px;
+                padding: 15px;
+            }
+            label {
+                font-size: 18px;
+            }
+            select, input[type="text"], input[type="number"], textarea {
+                font-size: 16px;
+                padding: 12px;
+            }
+            .nav-buttons button, button.action-button-in, button.action-button-out, button#clear-entries, button#clear-stock, .export-buttons button {
+                font-size: 16px;
+                padding: 12px 20px;
+            }
+            .recent-entries h3, .record-table h3 {
+                font-size: 20px;
+            }
+            .entry {
+                font-size: 16px;
+            }
+            th, td {
+                font-size: 16px;
+                padding: 12px;
+            }
+            .quantity-group {
+                flex-direction: column; /* 모바일에서는 세로로 배치 */
+                gap: 5px; /* 간격 더욱 줄이기 */
+            }
+            .quantity-group .form-group {
+                width: 100%;
+                padding: 5px; /* 패딩 줄이기 */
+            }
+            .total-quantity {
+                font-size: 18px;
+                gap: 5px; /* 간격 줄이기 */
+            }
+            /* 헤더 섹션 레이아웃 조정 */
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            .logout-button {
+                align-self: flex-end;
+            }
+        }
+        /* 글씨 가독성 향상 */
+        .entry span {
+            font-size: 14px;
+            color: #555;
+            font-weight: normal;
+        }
+        /* 박스와 낱장 입력을 구분하기 위한 스타일 개선 */
+        .quantity-group {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px; /* 기본 간격 */
+            flex-wrap: wrap; /* 모바일에서도 잘 보이도록 */
+        }
+        .quantity-group .form-group {
+            flex: 1;
+            min-width: 120px; /* 최소 너비 설정 */
+        }
+        /* 로그아웃 버튼 스타일 (헤더 내 배치) */
+        .logout-button {
+            padding: 10px 20px;
+            background-color: #ff5252; /* 빨간색 */
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .logout-button:hover {
+            background-color: #e53935; /* 더 진한 빨간색 */
+        }
+        /* 헤더 섹션 스타일 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
     </style>
     
     <!-- Firebase SDK 추가 -->
@@ -247,6 +700,8 @@
                         document.getElementById("pieces").value = "0"; // 낱장 초기화
                         document.getElementById("total-quantity").innerText = "0"; // 총 수량 초기화
                         alert("데이터가 성공적으로 저장되었습니다.");
+                        // 재고 테이블 업데이트
+                        loadAdminData();
                     })
                     .catch((error) => {
                         alert("데이터 저장 중 오류 발생: " + error.message);
@@ -287,6 +742,7 @@
             const msUntilMidnight = nextMidnight - now;
 
             setTimeout(() => {
+                // 일일 초기화 시 별도로 재고와 입출고 기록을 초기화
                 firebase.database().ref('entries').remove()
                     .then(() => {
                         firebase.database().ref('stock').remove();
@@ -309,7 +765,6 @@
             if (sectionId === "admin-section") {
                 if (isAdmin) {
                     loadAdminData();
-                    updateStockTable();
                 } else {
                     alert("재고 관리 페이지에 접근 권한이 없습니다.");
                     document.getElementById("input-section").classList.remove("hidden");
@@ -319,8 +774,8 @@
         }
 
         function loadAdminData() {
-            const tableBody = document.getElementById("admin-table-body");
-            tableBody.innerHTML = "";
+            const stockTableBody = document.getElementById("stock-table-body");
+            stockTableBody.innerHTML = "";
 
             // Firebase의 stock 노드에서 재고 데이터 로드
             firebase.database().ref('stock').once('value')
@@ -353,7 +808,7 @@
                                 total += qty;
                             });
                             row.innerHTML += `<td class="total-cell">${total}장</td>`;
-                            tableBody.appendChild(row);
+                            stockTableBody.appendChild(row);
                         });
                     } else {
                         // 재고 데이터가 없을 때 기본 값 표시
@@ -361,7 +816,7 @@
                         matTypes.forEach(mat => {
                             const row = document.createElement("tr");
                             row.innerHTML = `<td>${mat}</td><td>0장</td><td>0장</td><td>0장</td><td class="total-cell">0장</td>`;
-                            tableBody.appendChild(row);
+                            stockTableBody.appendChild(row);
                         });
                     }
                 })
@@ -369,7 +824,7 @@
                     alert("재고 데이터 로드 중 오류 발생: " + error.message);
                 });
 
-            // 재고 기록 테이블도 로드
+            // 입출고 기록 테이블 로드
             loadEntryRecords();
         }
 
@@ -419,58 +874,6 @@
             } else if (entry.type === "출고") {
                 firebase.database().ref(stockPath).set(firebase.database.ServerValue.increment(-quantity));
             }
-        }
-
-        function updateStockTable() {
-            const tableBody = document.getElementById("stock-table-body");
-            tableBody.innerHTML = "";
-
-            // Firebase의 stock 노드에서 재고 데이터 로드
-            firebase.database().ref('stock').once('value')
-                .then((snapshot) => {
-                    const stockEntries = snapshot.val();
-                    if (stockEntries) {
-                        const stockArray = [];
-                        for (const mat in stockEntries) {
-                            for (const color in stockEntries[mat]) {
-                                stockArray.push({
-                                    matName: mat,
-                                    color: color,
-                                    quantity: stockEntries[mat][color]
-                                });
-                            }
-                        }
-
-                        // 매트별로 정리
-                        const matTypes = [...new Set(stockArray.map(item => item.matName))];
-
-                        matTypes.forEach(mat => {
-                            const matColors = stockArray.filter(item => item.matName === mat);
-                            let row = document.createElement("tr");
-                            row.innerHTML = `<td>${mat}</td>`;
-                            let total = 0;
-                            ["프렌치바닐라", "솔리드그레이", "베이지코튼"].forEach(color => {
-                                const colorEntry = matColors.find(item => item.color === color);
-                                const qty = colorEntry ? colorEntry.quantity : 0;
-                                row.innerHTML += `<td>${qty}장</td>`;
-                                total += qty;
-                            });
-                            row.innerHTML += `<td class="total-cell">${total}장</td>`;
-                            tableBody.appendChild(row);
-                        });
-                    } else {
-                        // 재고 데이터가 없을 때 기본 값 표시
-                        const matTypes = ["자이언트플러스", "자이언트플러스 R", "자이언트플러스 0.5T", "빅토리매트", "빅토리매트 R", "빅토리매트 0.5T"];
-                        matTypes.forEach(mat => {
-                            const row = document.createElement("tr");
-                            row.innerHTML = `<td>${mat}</td><td>0장</td><td>0장</td><td>0장</td><td class="total-cell">0장</td>`;
-                            tableBody.appendChild(row);
-                        });
-                    }
-                })
-                .catch((error) => {
-                    alert("재고 데이터 로드 중 오류 발생: " + error.message);
-                });
         }
 
         function getMatName(category, type) {
@@ -778,8 +1181,8 @@
 
                 <!-- 초기화 버튼 두 개로 분리 -->
                 <div class="export-buttons">
-                    <button onclick="clearStock()">재고 내역 초기화</button>
-                    <button onclick="clearEntries()">입출고 기록 초기화</button>
+                    <button id="clear-stock" onclick="clearStock()">재고 내역 초기화</button>
+                    <button id="clear-entries" onclick="clearEntries()">입출고 기록 초기화</button>
                 </div>
             </div>
         </div>
