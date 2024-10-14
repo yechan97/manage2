@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap">
     <!-- SheetJS 라이브러리 추가 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Chart.js 라이브러리 추가 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* 전체 페이지 배경색 설정 */
         body {
@@ -464,6 +466,12 @@
             align-items: center;
             margin-bottom: 20px;
         }
+        /* 차트 스타일 */
+        .chart-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 25px auto;
+        }
     </style>
     
     <!-- Firebase SDK 추가 -->
@@ -498,8 +506,7 @@
             "최동선",
             "이사님",
             "전라지사",
-            "관리자"
-
+            "신입"
         ];
 
         // 매트 종류별 박스당 낱장 수량 매핑
@@ -521,6 +528,10 @@
         // 현재 로그인한 사용자 이름 저장
         let currentUserName = "";
         let isAdmin = false; // 관리자 권한 여부
+
+        // 차트 객체 초기화
+        let stockChart; // 전역 변수로 선언
+        let entriesChart; // 전역 변수로 선언
 
         document.addEventListener("DOMContentLoaded", () => {
             // 초기 화면은 로그인 화면
@@ -776,6 +787,14 @@
             firebase.database().ref('stock').once('value')
                 .then((snapshot) => {
                     const stockEntries = snapshot.val();
+                    const stockData = {
+                        labels: [],
+                        프렌치바닐라: [],
+                        솔리드그레이: [],
+                        베이지코튼: [],
+                        합계: []
+                    };
+
                     if (stockEntries) {
                         const stockArray = [];
                         for (const mat in stockEntries) {
@@ -790,7 +809,6 @@
 
                         // 매트별로 정리
                         const matTypes = [...new Set(stockArray.map(item => item.matName))];
-
                         matTypes.forEach(mat => {
                             const matColors = stockArray.filter(item => item.matName === mat);
                             let row = document.createElement("tr");
@@ -801,10 +819,23 @@
                                 const qty = colorEntry ? colorEntry.quantity : 0;
                                 row.innerHTML += `<td>${qty}장</td>`;
                                 total += qty;
+
+                                // 차트 데이터 준비
+                                if (!stockData[color]) stockData[color] = [];
+                                stockData[color].push(qty);
                             });
                             row.innerHTML += `<td class="total-cell">${total}장</td>`;
                             stockTableBody.appendChild(row);
+
+                            // 합계 데이터 준비
+                            stockData["합계"].push(total);
                         });
+
+                        // 차트 레이블 설정
+                        stockData.labels = matTypes;
+
+                        // 차트 업데이트
+                        updateStockChart(stockData);
                     } else {
                         // 재고 데이터가 없을 때 기본 값 표시
                         const matTypes = ["자이언트플러스", "자이언트플러스 R", "자이언트플러스 0.5T", "빅토리매트", "빅토리매트 R", "빅토리매트 0.5T"];
@@ -813,6 +844,16 @@
                             row.innerHTML = `<td>${mat}</td><td>0장</td><td>0장</td><td>0장</td><td class="total-cell">0장</td>`;
                             stockTableBody.appendChild(row);
                         });
+
+                        // 차트 레이블 설정
+                        stockData.labels = matTypes;
+                        stockData.프렌치바닐라 = new Array(matTypes.length).fill(0);
+                        stockData.솔리드그레이 = new Array(matTypes.length).fill(0);
+                        stockData.베이지코튼 = new Array(matTypes.length).fill(0);
+                        stockData.합계 = new Array(matTypes.length).fill(0);
+
+                        // 차트 업데이트
+                        updateStockChart(stockData);
                     }
                 })
                 .catch((error) => {
@@ -823,18 +864,90 @@
             loadEntryRecords();
         }
 
+        function updateStockChart(data) {
+            const ctx = document.getElementById('stock-chart').getContext('2d');
+            if (stockChart) {
+                stockChart.destroy();
+            }
+            stockChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        {
+                            label: '프렌치바닐라',
+                            data: data.프렌치바닐라,
+                            backgroundColor: 'rgba(168, 213, 226, 0.7)', // 파스텔 블루
+                            borderColor: 'rgba(168, 213, 226, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: '솔리드그레이',
+                            data: data.솔리드그레이,
+                            backgroundColor: 'rgba(255, 153, 153, 0.7)', // 파스텔 레드
+                            borderColor: 'rgba(255, 153, 153, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: '베이지코튼',
+                            data: data.베이지코튼,
+                            backgroundColor: 'rgba(204, 255, 153, 0.7)', // 파스텔 그린
+                            borderColor: 'rgba(204, 255, 153, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: '합계',
+                            data: data.합계,
+                            backgroundColor: 'rgba(255, 206, 86, 0.7)', // 노란색
+                            borderColor: 'rgba(255, 206, 86, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 5
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         function loadEntryRecords() {
             const recordsTableBody = document.getElementById("admin-table-body");
             recordsTableBody.innerHTML = "";
 
             firebase.database().ref('entries')
-                .on('value', (snapshot) => {
-                    recordsTableBody.innerHTML = "";
+                .once('value')
+                .then((snapshot) => {
                     const adminEntries = snapshot.val();
                     if (adminEntries) {
                         const entriesArray = Object.values(adminEntries);
-                        // 최신 순으로 내림차순 정렬
-                        entriesArray.sort((a, b) => b.timestamp - a.timestamp);
+                        // 오래된 순으로 오름차순 정렬
+                        entriesArray.sort((a, b) => a.timestamp - b.timestamp);
+
+                        // 차트 데이터 준비
+                        const chartData = {
+                            labels: ['입고', '출고'],
+                            datasets: [{
+                                data: [0, 0],
+                                backgroundColor: [
+                                    'rgba(168, 213, 226, 0.7)', // 파스텔 블루
+                                    'rgba(255, 153, 153, 0.7)'  // 파스텔 레드
+                                ],
+                                borderColor: [
+                                    'rgba(168, 213, 226, 1)',
+                                    'rgba(255, 153, 153, 1)'
+                                ],
+                                borderWidth: 1
+                            }]
+                        };
+
                         entriesArray.forEach(entry => {
                             const formattedTime = formatTimestamp(entry.timestamp);
                             const row = document.createElement("tr");
@@ -849,13 +962,70 @@
                                 <td>${formattedTime}</td>
                             `;
                             recordsTableBody.appendChild(row);
+
+                            // 차트 데이터 집계
+                            if (entry.type === "입고") {
+                                chartData.datasets[0].data[0] += entry.quantity;
+                            } else if (entry.type === "출고") {
+                                chartData.datasets[0].data[1] += entry.quantity;
+                            }
                         });
+
+                        // 차트 업데이트
+                        updateEntriesChart(chartData);
                     } else {
                         recordsTableBody.innerHTML = "<tr><td colspan='8'>입출고 기록이 없습니다.</td></tr>";
+
+                        // 차트 데이터 초기화
+                        const chartData = {
+                            labels: ['입고', '출고'],
+                            datasets: [{
+                                data: [0, 0],
+                                backgroundColor: [
+                                    'rgba(168, 213, 226, 0.7)', // 파스텔 블루
+                                    'rgba(255, 153, 153, 0.7)'  // 파스텔 레드
+                                ],
+                                borderColor: [
+                                    'rgba(168, 213, 226, 1)',
+                                    'rgba(255, 153, 153, 1)'
+                                ],
+                                borderWidth: 1
+                            }]
+                        };
+                        updateEntriesChart(chartData);
                     }
-                }, (error) => {
-                    alert("관리자 데이터 실시간 업데이트 중 오류 발생: " + error.message);
+                })
+                .catch((error) => {
+                    alert("입출고 기록 로드 중 오류 발생: " + error.message);
                 });
+        }
+
+        function updateEntriesChart(data) {
+            const ctx = document.getElementById('entries-chart').getContext('2d');
+            if (entriesChart) {
+                entriesChart.destroy();
+            }
+            entriesChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['입고', '출고'],
+                    datasets: [{
+                        data: data.datasets[0].data,
+                        backgroundColor: [
+                            'rgba(168, 213, 226, 0.7)', // 파스텔 블루
+                            'rgba(255, 153, 153, 0.7)'  // 파스텔 레드
+                        ],
+                        borderColor: [
+                            'rgba(168, 213, 226, 1)',
+                            'rgba(255, 153, 153, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true
+                }
+            });
         }
 
         function getMatName(category, type) {
@@ -1065,6 +1235,63 @@
             document.getElementById("mat-type").addEventListener("change", calculateTotalQuantity);
             document.getElementById("mat-name").addEventListener("change", calculateTotalQuantity);
         }
+
+        // 재고 동기화 함수
+        function synchronizeStock() {
+            if (!isAdmin) {
+                alert("재고 동기화는 관리자만 가능합니다.");
+                return;
+            }
+
+            if (!confirm("입출고 기록을 바탕으로 재고를 동기화하시겠습니까? 이 작업은 기존 재고 데이터를 덮어씁니다.")) {
+                return;
+            }
+
+            firebase.database().ref('entries').once('value')
+                .then((snapshot) => {
+                    const entries = snapshot.val();
+                    if (!entries) {
+                        alert("입출고 기록이 없습니다. 동기화를 진행할 수 없습니다.");
+                        return;
+                    }
+
+                    const stockMap = {};
+
+                    // 모든 입출고 기록을 순회하여 재고 계산
+                    Object.values(entries).forEach(entry => {
+                        const { matName, color, quantity, type } = entry;
+                        if (!stockMap[matName]) {
+                            stockMap[matName] = {};
+                        }
+                        if (!stockMap[matName][color]) {
+                            stockMap[matName][color] = 0;
+                        }
+
+                        if (type === "입고") {
+                            stockMap[matName][color] += quantity;
+                        } else if (type === "출고") {
+                            stockMap[matName][color] -= quantity;
+                        }
+                    });
+
+                    // Firebase의 stock 노드를 업데이트
+                    const updates = {};
+                    for (const mat in stockMap) {
+                        for (const color in stockMap[mat]) {
+                            updates[`/stock/${mat}/${color}`] = stockMap[mat][color];
+                        }
+                    }
+
+                    return firebase.database().ref().update(updates);
+                })
+                .then(() => {
+                    alert("재고가 성공적으로 동기화되었습니다.");
+                    loadAdminData();
+                })
+                .catch((error) => {
+                    alert("재고 동기화 중 오류 발생: " + error.message);
+                });
+        }
     </script>
 </head>
 <body>
@@ -1190,6 +1417,11 @@
                     <button onclick="exportRecords()">입출고 기록 엑셀 저장</button>
                 </div>
 
+                <!-- 재고 동기화 버튼 추가 -->
+                <div class="export-buttons">
+                    <button onclick="synchronizeStock()">재고 동기화</button>
+                </div>
+
                 <h3 class="record-table">입출고 기록 내역</h3>
                 <div class="table-container">
                     <table id="records-table"> <!-- id="records-table" 추가 -->
@@ -1209,6 +1441,17 @@
                             <!-- 데이터가 여기에 동적으로 추가될 것임 -->
                         </tbody>
                     </table>
+                </div>
+
+                <!-- 차트 표시 섹션 추가 -->
+                <h3 class="record-table">재고 현황 차트</h3>
+                <div class="chart-container">
+                    <canvas id="stock-chart"></canvas>
+                </div>
+
+                <h3 class="record-table">입출고 기록 차트</h3>
+                <div class="chart-container">
+                    <canvas id="entries-chart"></canvas>
                 </div>
 
                 <!-- 초기화 버튼 두 개로 분리 -->
