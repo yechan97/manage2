@@ -82,12 +82,10 @@
             border-color: #a8d5e2; /* 파스텔 블루 */
             outline: none;
         }
-        .login-form .remember-me {
+        .login-form .checkbox-group {
             display: flex;
             align-items: center;
             gap: 10px;
-            font-size: 16px;
-            color: #555555;
         }
         .login-form button {
             padding: 12px;
@@ -435,6 +433,24 @@
             flex: 1;
             min-width: 120px; /* 최소 너비 설정 */
         }
+        /* 로그아웃 버튼 스타일 */
+        .logout-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background-color: #ff5252; /* 빨간색 */
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .logout-button:hover {
+            background-color: #e53935; /* 더 진한 빨간색 */
+        }
     </style>
     
     <!-- Firebase SDK 추가 -->
@@ -484,25 +500,24 @@
 
         // 현재 로그인한 사용자 이름 저장
         let currentUserName = "";
+        let isAdmin = false; // 관리자 권한 여부
 
         document.addEventListener("DOMContentLoaded", () => {
+            // 초기 화면은 로그인 화면
+            const loginSection = document.getElementById("login-section");
+            const mainSection = document.getElementById("main-section");
+
             // 자동 로그인 체크
-            const loggedIn = localStorage.getItem("loggedIn");
-            const storedUserName = localStorage.getItem("userName");
-            if (loggedIn === "true" && storedUserName) {
-                currentUserName = storedUserName;
-                document.getElementById("login-section").style.display = "none";
-                document.getElementById("main-section").classList.remove("hidden");
-                // 초기화 및 데이터 로드
-                displayRecentEntries();
-                loadAdminData();
-                resetEntriesDaily(); // 함수 이름 변경 및 일일 초기화
-                calculateTotalQuantity(); // 초기 총 수량 계산
-                addEventListeners(); // 이벤트 리스너 추가
+            const storedLogin = JSON.parse(localStorage.getItem("loginState"));
+            if (storedLogin && storedLogin.loggedIn) {
+                currentUserName = storedLogin.name;
+                isAdmin = storedLogin.isAdmin;
+                loginSection.style.display = "none";
+                mainSection.classList.remove("hidden");
+                initializeMainSection();
             } else {
-                // 초기 화면은 로그인 화면
-                document.getElementById("login-section").style.display = "flex";
-                document.getElementById("main-section").classList.add("hidden");
+                loginSection.style.display = "flex";
+                mainSection.classList.add("hidden");
             }
 
             // 로그인 버튼 이벤트 리스너 추가
@@ -512,45 +527,63 @@
                     handleLogin();
                 }
             });
+
+            // 로그아웃 버튼 이벤트 리스너 추가
+            document.getElementById("logout-button").addEventListener("click", handleLogout);
         });
 
         function handleLogin() {
             const name = document.getElementById("login-name").value.trim();
             const password = document.getElementById("login-password").value.trim();
-            const rememberMe = document.getElementById("remember-me").checked;
+            const autoLogin = document.getElementById("auto-login").checked;
 
             if (name === "") {
                 displayLoginError("이름을 입력해주세요.");
                 return;
             }
 
-            let requiredPassword = "0074";
-            const adminUsers = ["문경훈", "관리자"];
-            if (adminUsers.includes(name)) {
-                requiredPassword = "9998";
-            }
-
-            if (password === requiredPassword) {
-                currentUserName = name;
-                // 로그인 성공 시 화면 전환
-                document.getElementById("login-section").style.display = "none";
-                document.getElementById("main-section").classList.remove("hidden");
-
-                // 자동 로그인 설정
-                if (rememberMe) {
-                    localStorage.setItem("loggedIn", "true");
-                    localStorage.setItem("userName", currentUserName);
-                }
-
-                // 초기화 및 데이터 로드
-                displayRecentEntries();
-                loadAdminData();
-                resetEntriesDaily(); // 함수 이름 변경 및 일일 초기화
-                calculateTotalQuantity(); // 초기 총 수량 계산
-                addEventListeners(); // 이벤트 리스너 추가
-            } else {
+            // 비밀번호 검증
+            if (password !== "0074" && password !== "9998") {
                 displayLoginError("비밀번호가 올바르지 않습니다.");
+                return;
             }
+
+            // 관리자 권한 설정
+            if (password === "9998") {
+                isAdmin = true;
+            } else {
+                isAdmin = false;
+            }
+
+            currentUserName = name;
+
+            // 로그인 성공 시 화면 전환
+            document.getElementById("login-section").style.display = "none";
+            document.getElementById("main-section").classList.remove("hidden");
+            initializeMainSection();
+
+            // 자동 로그인 설정
+            if (autoLogin) {
+                localStorage.setItem("loginState", JSON.stringify({
+                    loggedIn: true,
+                    name: currentUserName,
+                    isAdmin: isAdmin
+                }));
+            }
+        }
+
+        function handleLogout() {
+            // 로그인 상태 초기화
+            localStorage.removeItem("loginState");
+            currentUserName = "";
+            isAdmin = false;
+
+            // 메인 섹션 숨기고 로그인 섹션 표시
+            document.getElementById("main-section").classList.add("hidden");
+            document.getElementById("login-section").style.display = "flex";
+
+            // 초기화
+            resetMainSection();
         }
 
         function displayLoginError(message) {
@@ -559,6 +592,19 @@
             setTimeout(() => {
                 errorDiv.textContent = "";
             }, 3000);
+        }
+
+        function initializeMainSection() {
+            displayRecentEntries();
+            loadAdminData();
+            resetEntriesDaily(); // 함수 이름 변경 및 일일 초기화
+            calculateTotalQuantity(); // 초기 총 수량 계산
+            addEventListeners(); // 이벤트 리스너 추가
+        }
+
+        function resetMainSection() {
+            // 데이터 초기화 필요 시 여기에 추가
+            window.location.reload();
         }
 
         // 작성 시간을 "MM/DD H:MM" 형식으로 포맷
@@ -670,8 +716,14 @@
             document.getElementById(sectionId).classList.remove("hidden");
 
             if (sectionId === "admin-section") {
-                loadAdminData();
-                updateStockTable();
+                if (isAdmin) {
+                    loadAdminData();
+                    updateStockTable();
+                } else {
+                    alert("재고 관리 페이지에 접근 권한이 없습니다.");
+                    document.getElementById("input-section").classList.remove("hidden");
+                    document.getElementById("admin-section").classList.add("hidden");
+                }
             }
         }
 
@@ -827,9 +879,9 @@
                     <label for="login-password">비밀번호:</label>
                     <input type="password" id="login-password" placeholder="비밀번호를 입력하세요">
                 </div>
-                <div class="remember-me">
-                    <input type="checkbox" id="remember-me">
-                    <label for="remember-me">자동 로그인</label>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="auto-login">
+                    <label for="auto-login">자동 로그인</label>
                 </div>
                 <button id="login-button">로그인</button>
                 <div id="login-error" class="login-error"></div>
@@ -838,6 +890,9 @@
 
         <!-- 메인 섹션 (로그인 후 표시) -->
         <div id="main-section" class="hidden">
+            <!-- 로그아웃 버튼 -->
+            <button id="logout-button" class="logout-button">로그아웃</button>
+
             <!-- Navigation Buttons -->
             <div class="nav-buttons">
                 <button onclick="showSection('input-section')">토리매트 입/출고</button>
