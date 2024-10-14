@@ -9,13 +9,16 @@
     <!-- SheetJS 라이브러리 추가 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        /* 기본 스타일 */
+        /* 전체 페이지 배경색 설정 */
         body {
             font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
-            background-color: #fdf6f0; /* 파스텔 베이지 톤 */
+            background-color: #e0f7fa; /* 연한 청록색 배경 */
             margin: 0;
-            padding: 10px;
-            overflow-x: hidden; /* 불필요한 가로 스크롤 방지 */
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
         .container {
             width: 100%;
@@ -34,12 +37,13 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 80vh;
+            height: 100vh;
+            background-color: #e0f7fa; /* 전체 페이지 배경색과 동일 */
         }
         .login-section h2 {
             margin-bottom: 20px;
             font-size: 28px;
-            color: #555555;
+            color: #00796b; /* 짙은 청록색 텍스트 */
         }
         .login-form {
             width: 100%;
@@ -47,15 +51,17 @@
             display: flex;
             flex-direction: column;
             gap: 15px;
-            background-color: #fff8f0; /* 아주 연한 파스텔 오렌지 */
-            padding: 20px;
-            border-radius: 8px;
+            background-color: #ffffff; /* 흰색 배경 */
+            padding: 30px;
+            border-radius: 10px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
         .login-form label {
             font-weight: bold;
             font-size: 18px;
             color: #555555;
+            display: block;
+            margin-bottom: 5px;
         }
         .login-form input[type="text"],
         .login-form input[type="password"] {
@@ -68,6 +74,8 @@
             transition: border-color 0.3s ease;
             color: #333333; /* 다크 그레이 */
             background-color: #ffffff; /* 흰색 배경 */
+            width: 100%;
+            box-sizing: border-box;
         }
         .login-form input[type="text"]:focus,
         .login-form input[type="password"]:focus {
@@ -76,7 +84,7 @@
         }
         .login-form button {
             padding: 12px;
-            background-color: #a8d5e2; /* 파스텔 블루 */
+            background-color: #00796b; /* 짙은 청록색 */
             color: #ffffff;
             border: none;
             border-radius: 8px;
@@ -87,7 +95,7 @@
             transition: background-color 0.3s ease;
         }
         .login-form button:hover {
-            background-color: #6fb1d8; /* 더 진한 파스텔 블루 */
+            background-color: #004d40; /* 더 진한 청록색 */
         }
         /* 로그인 실패 메시지 */
         .login-error {
@@ -516,10 +524,6 @@
             setTimeout(() => {
                 errorDiv.textContent = "";
             }, 3000);
-        }
-
-        function toggleCustomInput(selectedValue) {
-            // 이름 입력을 로그인으로 변경했으므로 더 이상 필요 없음
         }
 
         // 작성 시간을 "MM/DD H:MM" 형식으로 포맷
