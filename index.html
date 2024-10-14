@@ -498,7 +498,6 @@
             "최동선",
             "이사님",
             "전라지사",
-            "관리자",
             "신입"
         ];
 
@@ -572,18 +571,13 @@
             }
 
             // 비밀번호 검증
-            if (name === "관리자") {
-                if (password !== "9998") {
-                    displayLoginError("비밀번호가 올바르지 않습니다.");
-                    return;
-                }
+            if (password === "9998") {
                 isAdmin = true;
-            } else {
-                if (password !== "0074") {
-                    displayLoginError("비밀번호가 올바르지 않습니다.");
-                    return;
-                }
+            } else if (password === "0074") {
                 isAdmin = false;
+            } else {
+                displayLoginError("비밀번호가 올바르지 않습니다.");
+                return;
             }
 
             currentUserName = name;
@@ -861,19 +855,6 @@
                 }, (error) => {
                     alert("관리자 데이터 실시간 업데이트 중 오류 발생: " + error.message);
                 });
-        }
-
-        function updateStockData(entry) {
-            const matName = entry.matName;
-            const color = entry.color;
-            const quantity = parseInt(entry.quantity);
-
-            const stockPath = `stock/${matName}/${color}`;
-            if (entry.type === "입고") {
-                firebase.database().ref(stockPath).set(firebase.database.ServerValue.increment(quantity));
-            } else if (entry.type === "출고") {
-                firebase.database().ref(stockPath).set(firebase.database.ServerValue.increment(-quantity));
-            }
         }
 
         function getMatName(category, type) {
