@@ -674,28 +674,28 @@
                 const updates = {};
                 updates['/entries/' + newEntryKey] = entry;
 
-                // 동시에 stock 업데이트
-                const stockPath = `/stock/${matFullName}/${color}`;
-                let stockUpdate = {};
-                if (type === "입고") {
-                    stockUpdate[stockPath] = firebase.database.ServerValue.increment(totalQuantity);
-                } else if (type === "출고") {
-                    stockUpdate[stockPath] = firebase.database.ServerValue.increment(-totalQuantity);
-                }
-
+                // 먼저 entry를 추가하고, 그 다음에 stock을 transaction으로 업데이트
                 firebase.database().ref().update(updates)
                     .then(() => {
-                        return firebase.database().ref().update(stockUpdate);
+                        const stockPath = `/stock/${matFullName}/${color}`;
+                        const stockRef = firebase.database().ref(stockPath);
+                        return stockRef.transaction(current => {
+                            return (current || 0) + (type === "입고" ? totalQuantity : -totalQuantity);
+                        });
                     })
-                    .then(() => {
-                        // UI 업데이트
-                        document.getElementById("notes").value = "";
-                        document.getElementById("boxes").value = "0"; // 박스 초기화
-                        document.getElementById("pieces").value = "0"; // 낱장 초기화
-                        document.getElementById("total-quantity").innerText = "0"; // 총 수량 초기화
-                        alert("데이터가 성공적으로 저장되었습니다.");
-                        // 재고 테이블 업데이트
-                        loadAdminData();
+                    .then((result) => {
+                        if (result.committed) {
+                            // UI 업데이트
+                            document.getElementById("notes").value = "";
+                            document.getElementById("boxes").value = "0"; // 박스 초기화
+                            document.getElementById("pieces").value = "0"; // 낱장 초기화
+                            document.getElementById("total-quantity").innerText = "0"; // 총 수량 초기화
+                            alert("데이터가 성공적으로 저장되었습니다.");
+                            // 재고 테이블 업데이트
+                            loadAdminData();
+                        } else {
+                            alert("재고 업데이트가 취소되었습니다.");
+                        }
                     })
                     .catch((error) => {
                         alert("데이터 저장 중 오류 발생: " + error.message);
@@ -715,8 +715,8 @@
                     const entries = snapshot.val();
                     if (entries) {
                         const entriesArray = Object.values(entries);
-                        // 오래된 순으로 정렬 (오름차순)
-                        entriesArray.sort((a, b) => a.timestamp - b.timestamp);
+                        // 최신 순으로 내림차순 정렬 (오름차순이 아닌 내림차순)
+                        entriesArray.sort((a, b) => b.timestamp - a.timestamp);
                         entriesArray.forEach(entry => {
                             const formattedTime = formatTimestamp(entry.timestamp);
                             recentContainer.innerHTML += `<div class="entry">${entry.name} | ${entry.category} | ${entry.matName} | ${entry.color} | ${entry.quantity}장 (${entry.type}) | ${entry.notes} | <span>${formattedTime}</span></div>`;
@@ -832,8 +832,8 @@
                     const adminEntries = snapshot.val();
                     if (adminEntries) {
                         const entriesArray = Object.values(adminEntries);
-                        // 오래된 순으로 정렬 (오름차순)
-                        entriesArray.sort((a, b) => a.timestamp - b.timestamp);
+                        // 최신 순으로 내림차순 정렬
+                        entriesArray.sort((a, b) => b.timestamp - a.timestamp);
                         entriesArray.forEach(entry => {
                             const formattedTime = formatTimestamp(entry.timestamp);
                             const row = document.createElement("tr");
@@ -944,55 +944,105 @@
 
         // 엑셀 저장 함수: 입출고 기록
         function exportRecords() {
-            const table = document.getElementById('records-table');
-            const workbook = XLSX.utils.table_to_book(table, {sheet:"입출고기록"});
-
-            // 워크시트 가져오기
-            const worksheet = workbook.Sheets["입출고기록"];
-
-            // 헤더 스타일링: 첫 번째 행을 굵게(Bold)
-            const range = XLSX.utils.decode_range(worksheet['!ref']);
-            for(let C = range.s.c; C <= range.e.c; ++C) {
-                const cell_address = {c: C, r: 0};
-                const cell_ref = XLSX.utils.encode_cell(cell_address);
-                if(!worksheet[cell_ref]) continue;
-                if(!worksheet[cell_ref].s) worksheet[cell_ref].s = {};
-                worksheet[cell_ref].s.font = { bold: true };
-            }
-
-            // 열 너비 설정
-            worksheet['!cols'] = [
-                { wch: 15 }, // 이름
-                { wch: 15 }, // 구분
-                { wch: 20 }, // 매트 종류
-                { wch: 15 }, // 색상
-                { wch: 10 }, // 수량
-                { wch: 10 }, // 입출고
-                { wch: 25 }, // 비고
-                { wch: 15 }  // 작성시간
-            ];
-
-            // 수량에서 '장' 제거
-            for(let R = 1; R <= range.e.r; ++R) { // 첫 번째 행은 헤더이므로 1부터 시작
-                // 수량 컬럼 (5번째 컬럼, 인덱스 4)
-                const cellRefQty = XLSX.utils.encode_cell({c: 4, r: R});
-                if(worksheet[cellRefQty] && typeof worksheet[cellRefQty].v === 'string') {
-                    const num = parseInt(worksheet[cellRefQty].v.replace('장', '').trim());
-                    if(!isNaN(num)) {
-                        worksheet[cellRefQty].v = num;
-                        worksheet[cellRefQty].t = 'n'; // 숫자 타입으로 설정
+            // 먼저 데이터를 새 배열로 복사하고, 오름차순으로 정렬
+            firebase.database().ref('entries').once('value')
+                .then((snapshot) => {
+                    const adminEntries = snapshot.val();
+                    let entriesArray = [];
+                    if (adminEntries) {
+                        entriesArray = Object.values(adminEntries);
+                        // 오래된 순으로 오름차순 정렬
+                        entriesArray.sort((a, b) => a.timestamp - b.timestamp);
                     }
-                }
-            }
 
-            // 워크북에 수정된 워크시트 다시 설정
-            workbook.Sheets["입출고기록"] = worksheet;
+                    // 임시 테이블 생성
+                    const tempTable = document.createElement("table");
+                    const thead = document.createElement("thead");
+                    thead.innerHTML = `
+                        <tr>
+                            <th>이름</th>
+                            <th>구분</th>
+                            <th>매트 종류</th>
+                            <th>색상</th>
+                            <th>수량</th>
+                            <th>입출고</th>
+                            <th>비고</th>
+                            <th>작성시간</th>
+                        </tr>
+                    `;
+                    tempTable.appendChild(thead);
 
-            // 워크북 저장
-            const date = new Date();
-            const formattedDate = `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2,'0')}${date.getDate().toString().padStart(2,'0')}`;
-            const filename = `${formattedDate}_입출고기록.xlsx`;
-            XLSX.writeFile(workbook, filename);
+                    const tbody = document.createElement("tbody");
+                    entriesArray.forEach(entry => {
+                        const formattedTime = formatTimestamp(entry.timestamp);
+                        const row = document.createElement("tr");
+                        row.innerHTML = `
+                            <td>${entry.name}</td>
+                            <td>${entry.category}</td>
+                            <td>${entry.matName}</td>
+                            <td>${entry.color}</td>
+                            <td>${entry.quantity}장</td>
+                            <td>${entry.type}</td>
+                            <td>${entry.notes}</td>
+                            <td>${formattedTime}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                    tempTable.appendChild(tbody);
+
+                    // SheetJS를 사용하여 엑셀로 변환
+                    const workbook = XLSX.utils.table_to_book(tempTable, {sheet:"입출고기록"});
+
+                    // 워크시트 가져오기
+                    const worksheet = workbook.Sheets["입출고기록"];
+
+                    // 헤더 스타일링: 첫 번째 행을 굵게(Bold)
+                    const range = XLSX.utils.decode_range(worksheet['!ref']);
+                    for(let C = range.s.c; C <= range.e.c; ++C) {
+                        const cell_address = {c: C, r: 0};
+                        const cell_ref = XLSX.utils.encode_cell(cell_address);
+                        if(!worksheet[cell_ref]) continue;
+                        if(!worksheet[cell_ref].s) worksheet[cell_ref].s = {};
+                        worksheet[cell_ref].s.font = { bold: true };
+                    }
+
+                    // 열 너비 설정
+                    worksheet['!cols'] = [
+                        { wch: 15 }, // 이름
+                        { wch: 15 }, // 구분
+                        { wch: 20 }, // 매트 종류
+                        { wch: 15 }, // 색상
+                        { wch: 10 }, // 수량
+                        { wch: 10 }, // 입출고
+                        { wch: 25 }, // 비고
+                        { wch: 15 }  // 작성시간
+                    ];
+
+                    // 수량에서 '장' 제거
+                    for(let R = 1; R <= range.e.r; ++R) { // 첫 번째 행은 헤더이므로 1부터 시작
+                        // 수량 컬럼 (5번째 컬럼, 인덱스 4)
+                        const cellRefQty = XLSX.utils.encode_cell({c: 4, r: R});
+                        if(worksheet[cellRefQty] && typeof worksheet[cellRefQty].v === 'string') {
+                            const num = parseInt(worksheet[cellRefQty].v.replace('장', '').trim());
+                            if(!isNaN(num)) {
+                                worksheet[cellRefQty].v = num;
+                                worksheet[cellRefQty].t = 'n'; // 숫자 타입으로 설정
+                            }
+                        }
+                    }
+
+                    // 워크북에 수정된 워크시트 다시 설정
+                    workbook.Sheets["입출고기록"] = worksheet;
+
+                    // 워크북 저장
+                    const date = new Date();
+                    const formattedDate = `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2,'0')}${date.getDate().toString().padStart(2,'0')}`;
+                    const filename = `${formattedDate}_입출고기록.xlsx`;
+                    XLSX.writeFile(workbook, filename);
+                })
+                .catch((error) => {
+                    alert("입출고 기록 내보내기 중 오류 발생: " + error.message);
+                });
         }
 
         // 총 수량 계산 함수
