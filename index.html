@@ -26,6 +26,74 @@
             padding: 25px; /* 패딩 증가 */
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); /* 그림자 효과 강화 */
             box-sizing: border-box;
+            position: relative;
+        }
+        /* 로그인 섹션 스타일 */
+        .login-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 80vh;
+        }
+        .login-section h2 {
+            margin-bottom: 20px;
+            font-size: 28px;
+            color: #555555;
+        }
+        .login-form {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background-color: #fff8f0; /* 아주 연한 파스텔 오렌지 */
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .login-form label {
+            font-weight: bold;
+            font-size: 18px;
+            color: #555555;
+        }
+        .login-form input[type="text"],
+        .login-form input[type="password"] {
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            font-size: 16px;
+            font-weight: bold;
+            transition: border-color 0.3s ease;
+            color: #333333; /* 다크 그레이 */
+            background-color: #ffffff; /* 흰색 배경 */
+        }
+        .login-form input[type="text"]:focus,
+        .login-form input[type="password"]:focus {
+            border-color: #a8d5e2; /* 파스텔 블루 */
+            outline: none;
+        }
+        .login-form button {
+            padding: 12px;
+            background-color: #a8d5e2; /* 파스텔 블루 */
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            font-family: 'Gowun Dodum', '고운 돋움', sans-serif;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .login-form button:hover {
+            background-color: #6fb1d8; /* 더 진한 파스텔 블루 */
+        }
+        /* 로그인 실패 메시지 */
+        .login-error {
+            color: red;
+            font-size: 14px;
+            text-align: center;
         }
         /* 입력 및 관리 섹션 헤더 */
         .input-header, .admin-header {
@@ -297,7 +365,7 @@
             .container {
                 padding: 15px; /* 패딩 축소 */
             }
-            h1 {
+            h1, .login-section h2 {
                 font-size: 24px;
                 padding: 15px;
             }
@@ -399,19 +467,59 @@
             "빅토리매트 0.5T": { "프렌치바닐라": 0, "솔리드그레이": 0, "베이지코튼": 0 }
         };
 
+        // 현재 로그인한 사용자 이름 저장
+        let currentUserName = "";
+
         document.addEventListener("DOMContentLoaded", () => {
-            displayRecentEntries();
-            loadAdminData();
-            resetEntriesDaily(); // 함수 이름 변경 및 일일 초기화
-            calculateTotalQuantity(); // 초기 총 수량 계산
-            addEventListeners(); // 이벤트 리스너 추가
+            // 초기 화면은 로그인 화면
+            document.getElementById("login-section").style.display = "flex";
+            document.getElementById("main-section").classList.add("hidden");
+
+            // 로그인 버튼 이벤트 리스너 추가
+            document.getElementById("login-button").addEventListener("click", handleLogin);
+            document.getElementById("login-password").addEventListener("keypress", function(e) {
+                if (e.key === 'Enter') {
+                    handleLogin();
+                }
+            });
+
+            // 기타 초기화 함수는 로그인 후에 호출
         });
 
+        function handleLogin() {
+            const name = document.getElementById("login-name").value.trim();
+            const password = document.getElementById("login-password").value.trim();
+
+            if (password === "0074") {
+                if (name === "") {
+                    displayLoginError("이름을 입력해주세요.");
+                    return;
+                }
+                currentUserName = name;
+                // 로그인 성공 시 화면 전환
+                document.getElementById("login-section").style.display = "none";
+                document.getElementById("main-section").classList.remove("hidden");
+                // 초기화 및 데이터 로드
+                displayRecentEntries();
+                loadAdminData();
+                resetEntriesDaily(); // 함수 이름 변경 및 일일 초기화
+                calculateTotalQuantity(); // 초기 총 수량 계산
+                addEventListeners(); // 이벤트 리스너 추가
+            } else {
+                displayLoginError("비밀번호가 올바르지 않습니다.");
+            }
+        }
+
+        function displayLoginError(message) {
+            const errorDiv = document.getElementById("login-error");
+            errorDiv.textContent = message;
+            setTimeout(() => {
+                errorDiv.textContent = "";
+            }, 3000);
+        }
+
         function toggleCustomInput(selectedValue) {
-            const customNameInput = document.getElementById("custom-name");
-            customNameInput.style.display = selectedValue === "직접입력" ? "block" : "none";
-            customNameInput.value = "";
-            calculateTotalQuantity(); // 매트 종류 변경 시 총 수량 재계산
+            // 이름 입력을 로그인으로 변경했으므로 더 이상 필요 없음
         }
 
         // 작성 시간을 "MM/DD H:MM" 형식으로 포맷
@@ -426,9 +534,6 @@
         }
 
         function addEntry(type) {
-            const name = document.getElementById("name-select").value === "직접입력"
-                ? document.getElementById("custom-name").value.trim()
-                : document.getElementById("name-select").value;
             const category = document.getElementById("mat-type").value;
             const matName = document.getElementById("mat-name").value;
             const color = document.getElementById("mat-color").value;
@@ -436,13 +541,13 @@
             const pieceInput = parseInt(document.getElementById("pieces").value) || 0; // 낱장 입력
             const notes = document.getElementById("notes").value.trim();
 
-            if (name && category && matName && color && (boxInput > 0 || pieceInput > 0)) {
+            if (currentUserName && category && matName && color && (boxInput > 0 || pieceInput > 0)) {
                 const matFullName = getMatName(category, matName);
                 const boxSize = boxSizes[matFullName] || 1; // 매트 종류에 따른 박스 크기, 기본값 1
                 const totalQuantity = (boxInput * boxSize) + pieceInput;
 
                 const entry = { 
-                    name, 
+                    name: currentUserName, 
                     category, 
                     matName: matFullName, 
                     color, 
@@ -462,8 +567,6 @@
                 firebase.database().ref().update(updates)
                     .then(() => {
                         // UI 업데이트
-                        document.getElementById("custom-name").style.display = "none";
-                        document.getElementById("custom-name").value = "";
                         document.getElementById("notes").value = "";
                         document.getElementById("boxes").value = "0"; // 박스 초기화
                         document.getElementById("pieces").value = "0"; // 낱장 초기화
@@ -530,15 +633,6 @@
             if (sectionId === "admin-section") {
                 loadAdminData();
                 updateStockTable();
-            }
-        }
-
-        function authenticateAdmin() {
-            const password = prompt("비밀번호를 입력하세요:");
-            if (password === "9998") { // 실제 비밀번호는 환경 변수로 관리하는 것이 좋습니다.
-                showSection('admin-section');
-            } else {
-                alert("비밀번호가 올바르지 않습니다.");
             }
         }
 
@@ -626,9 +720,11 @@
 
         function clearData() {
             if (confirm("정말 데이터를 초기화하시겠습니까?")) {
+                // Realtime Database 데이터 초기화
                 firebase.database().ref().remove()
                     .then(() => {
                         alert("데이터가 초기화되었습니다.");
+                        // 엑셀 파일 초기화은 서버 측에서 처리 (Cloud Functions 필요)
                         window.location.reload();
                     })
                     .catch((error) => {
@@ -680,150 +776,153 @@
 </head>
 <body>
     <div class="container">
-        <!-- Navigation Buttons -->
-        <div class="nav-buttons">
-            <button onclick="showSection('input-section')">토리매트 입/출고</button>
-            <button onclick="authenticateAdmin()">재고 관리 페이지</button>
-        </div>
-
-        <!-- Input Section -->
-        <div id="input-section">
-            <h1 class="input-header">토리매트 입/출고</h1>
-
-            <div class="form-group">
-                <label for="name-select">성명:</label>
-                <select id="name-select" onchange="toggleCustomInput(this.value)">
-                    <option>김수재</option>
-                    <option>문경훈</option>
-                    <option>방춘혁</option>
-                    <option>홍현철</option>
-                    <option>용석화</option>
-                    <option>정승훈</option>
-                    <option>최동선</option>
-                    <option>홍기주</option>
-                    <option>관리자</option> <!-- "관리자" 추가 -->
-                    <option>직접입력</option>
-                </select>
-                <input type="text" id="custom-name" placeholder="이름 입력" style="display: none;">
-            </div>
-
-            <div class="form-group">
-                <label for="mat-type">구분:</label>
-                <select id="mat-type">
-                    <option>정상</option>
-                    <option>리퍼브</option>
-                    <option>0.5t</option>
-                </select>
-
-                <label for="mat-name">매트 종류:</label>
-                <select id="mat-name">
-                    <option>자이언트플러스</option>
-                    <option>빅토리매트</option>
-                </select>
-
-                <label for="mat-color">색상:</label>
-                <select id="mat-color">
-                    <option>프렌치바닐라</option>
-                    <option>솔리드그레이</option>
-                    <option>베이지코튼</option>
-                </select>
-            </div>
-
-            <!-- 수량을 박스와 낱장으로 분리 -->
-            <div class="form-group">
-                <div class="quantity-group">
-                    <div class="form-group">
-                        <label for="boxes">박스:</label>
-                        <input type="number" id="boxes" min="0" value="0" onfocus="clearValue(this)">
-                    </div>
-                    <div class="form-group">
-                        <label for="pieces">낱장:</label>
-                        <input type="number" id="pieces" min="0" value="0" onfocus="clearValue(this)">
-                    </div>
+        <!-- 로그인 섹션 -->
+        <div id="login-section" class="login-section">
+            <h2>로그인</h2>
+            <div class="login-form">
+                <div>
+                    <label for="login-name">이름:</label>
+                    <input type="text" id="login-name" placeholder="이름을 입력하세요">
                 </div>
-                <!-- 총 수량 표시 -->
-                <div class="total-quantity">
-                    <label>총 수량:</label>
-                    <span id="total-quantity">0</span>
+                <div>
+                    <label for="login-password">비밀번호:</label>
+                    <input type="password" id="login-password" placeholder="비밀번호를 입력하세요">
                 </div>
-            </div>
-
-            <div class="form-group">
-                <label for="notes">비고:</label>
-                <textarea id="notes" placeholder="비고 내용을 입력하세요."></textarea>
-            </div>
-
-            <div class="buttons">
-                <button class="action-button-in" onclick="addEntry('입고')">입고</button>
-                <button class="action-button-out" onclick="addEntry('출고')">출고</button>
-            </div>
-
-            <div class="recent-entries">
-                <h3>최근 입/출고 내역</h3>
-                <div id="recent-entries"></div>
+                <button id="login-button">로그인</button>
+                <div id="login-error" class="login-error"></div>
             </div>
         </div>
 
-        <!-- Admin Section -->
-        <div id="admin-section" class="hidden">
-            <h1 class="admin-header">재고 관리 페이지</h1>
-
-            <table id="stock-table">
-                <thead>
-                    <tr>
-                        <th rowspan="2">매트 종류</th>
-                        <th colspan="3">색상</th>
-                        <th rowspan="2">합계</th>
-                    </tr>
-                    <tr>
-                        <th>프렌치바닐라</th>
-                        <th>솔리드그레이</th>
-                        <th>베이지코튼</th>
-                    </tr>
-                </thead>
-                <tbody id="stock-table-body">
-                    <!-- 동적으로 재고가 여기에 추가될 것임 -->
-                </tbody>
-            </table>
-
-            <!-- 엑셀 저장 버튼 추가 -->
-            <div class="export-buttons">
-                <button onclick="exportStock()">재고 내역 엑셀 저장</button>
-                <button onclick="exportRecords()">입출고 기록 엑셀 저장</button>
+        <!-- 메인 섹션 (로그인 후 표시) -->
+        <div id="main-section" class="hidden">
+            <!-- Navigation Buttons -->
+            <div class="nav-buttons">
+                <button onclick="showSection('input-section')">토리매트 입/출고</button>
+                <button onclick="showSection('admin-section')">재고 관리 페이지</button>
             </div>
 
-            <h3 class="record-table">입출고 기록 내역</h3>
-            <div class="table-container">
-                <table id="records-table"> <!-- id="records-table" 추가 -->
+            <!-- Input Section -->
+            <div id="input-section">
+                <h1 class="input-header">토리매트 입/출고</h1>
+
+                <div class="form-group">
+                    <label for="mat-type">구분:</label>
+                    <select id="mat-type">
+                        <option>정상</option>
+                        <option>리퍼브</option>
+                        <option>0.5t</option>
+                    </select>
+
+                    <label for="mat-name">매트 종류:</label>
+                    <select id="mat-name">
+                        <option>자이언트플러스</option>
+                        <option>빅토리매트</option>
+                    </select>
+
+                    <label for="mat-color">색상:</label>
+                    <select id="mat-color">
+                        <option>프렌치바닐라</option>
+                        <option>솔리드그레이</option>
+                        <option>베이지코튼</option>
+                    </select>
+                </div>
+
+                <!-- 수량을 박스와 낱장으로 분리 -->
+                <div class="form-group">
+                    <div class="quantity-group">
+                        <div class="form-group">
+                            <label for="boxes">박스:</label>
+                            <input type="number" id="boxes" min="0" value="0" onfocus="clearValue(this)">
+                        </div>
+                        <div class="form-group">
+                            <label for="pieces">낱장:</label>
+                            <input type="number" id="pieces" min="0" value="0" onfocus="clearValue(this)">
+                        </div>
+                    </div>
+                    <!-- 총 수량 표시 -->
+                    <div class="total-quantity">
+                        <label>총 수량:</label>
+                        <span id="total-quantity">0</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="notes">비고:</label>
+                    <textarea id="notes" placeholder="비고 내용을 입력하세요."></textarea>
+                </div>
+
+                <div class="buttons">
+                    <button class="action-button-in" onclick="addEntry('입고')">입고</button>
+                    <button class="action-button-out" onclick="addEntry('출고')">출고</button>
+                </div>
+
+                <div class="recent-entries">
+                    <h3>최근 입/출고 내역</h3>
+                    <div id="recent-entries"></div>
+                </div>
+            </div>
+
+            <!-- Admin Section -->
+            <div id="admin-section" class="hidden">
+                <h1 class="admin-header">재고 관리 페이지</h1>
+
+                <table id="stock-table">
                     <thead>
                         <tr>
-                            <th>이름</th>
-                            <th>구분</th>
-                            <th>매트 종류</th>
-                            <th>색상</th>
-                            <th>수량</th>
-                            <th>입출고</th>
-                            <th>비고</th>
-                            <th>작성시간</th> <!-- 작성시간 열 추가 -->
+                            <th rowspan="2">매트 종류</th>
+                            <th colspan="3">색상</th>
+                            <th rowspan="2">합계</th>
+                        </tr>
+                        <tr>
+                            <th>프렌치바닐라</th>
+                            <th>솔리드그레이</th>
+                            <th>베이지코튼</th>
                         </tr>
                     </thead>
-                    <tbody id="admin-table-body">
-                        <!-- 데이터가 여기에 동적으로 추가될 것임 -->
+                    <tbody id="stock-table-body">
+                        <!-- 동적으로 재고가 여기에 추가될 것임 -->
                     </tbody>
                 </table>
+
+                <!-- 엑셀 저장 버튼 추가 -->
+                <div class="export-buttons">
+                    <button onclick="exportStock()">재고 내역 엑셀 저장</button>
+                    <button onclick="exportRecords()">입출고 기록 엑셀 저장</button>
+                </div>
+
+                <h3 class="record-table">입출고 기록 내역</h3>
+                <div class="table-container">
+                    <table id="records-table"> <!-- id="records-table" 추가 -->
+                        <thead>
+                            <tr>
+                                <th>이름</th>
+                                <th>구분</th>
+                                <th>매트 종류</th>
+                                <th>색상</th>
+                                <th>수량</th>
+                                <th>입출고</th>
+                                <th>비고</th>
+                                <th>작성시간</th> <!-- 작성시간 열 추가 -->
+                            </tr>
+                        </thead>
+                        <tbody id="admin-table-body">
+                            <!-- 데이터가 여기에 동적으로 추가될 것임 -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <button id="clear-data" onclick="clearData()">초기화</button>
             </div>
-
-            <button id="clear-data" onclick="clearData()">초기화</button>
         </div>
-    </div>
 
-    <script>
-        // 입력 필드 클릭 시 기본 값 0 제거
-        function clearValue(element) {
-            if (element.value === "0") {
-                element.value = "";
+        <script>
+            // 입력 필드 클릭 시 기본 값 0 제거
+            function clearValue(element) {
+                if (element.value === "0") {
+                    element.value = "";
+                }
             }
-        }
-    </script>
+        </script>
+    </div>
 </body>
 </html>
