@@ -415,6 +415,27 @@
                 font-size: 18px;
                 gap: 5px; /* 간격 줄이기 */
             }
+            /* 헤더 섹션 레이아웃 조정 */
+            .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 20px;
+            }
+            .logout-button {
+                padding: 10px 20px;
+                background-color: #ff5252; /* 빨간색 */
+                color: #ffffff;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 16px;
+                font-weight: bold;
+                transition: background-color 0.3s ease;
+            }
+            .logout-button:hover {
+                background-color: #e53935; /* 더 진한 빨간색 */
+            }
         }
         /* 글씨 가독성 향상 */
         .entry span {
@@ -433,11 +454,8 @@
             flex: 1;
             min-width: 120px; /* 최소 너비 설정 */
         }
-        /* 로그아웃 버튼 스타일 */
+        /* 로그아웃 버튼 스타일 (헤더 내 배치) */
         .logout-button {
-            position: absolute;
-            top: 20px;
-            right: 20px;
             padding: 10px 20px;
             background-color: #ff5252; /* 빨간색 */
             color: #ffffff;
@@ -529,7 +547,10 @@
             });
 
             // 로그아웃 버튼 이벤트 리스너 추가
-            document.getElementById("logout-button").addEventListener("click", handleLogout);
+            const logoutButton = document.getElementById("logout-button");
+            if (logoutButton) {
+                logoutButton.addEventListener("click", handleLogout);
+            }
         });
 
         function handleLogin() {
@@ -890,13 +911,13 @@
 
         <!-- 메인 섹션 (로그인 후 표시) -->
         <div id="main-section" class="hidden">
-            <!-- 로그아웃 버튼 -->
-            <button id="logout-button" class="logout-button">로그아웃</button>
-
-            <!-- Navigation Buttons -->
-            <div class="nav-buttons">
-                <button onclick="showSection('input-section')">토리매트 입/출고</button>
-                <button onclick="showSection('admin-section')">재고 관리 페이지</button>
+            <!-- 헤더 섹션: 네비게이션 버튼과 로그아웃 버튼 -->
+            <div class="header">
+                <div class="nav-buttons">
+                    <button onclick="showSection('input-section')">토리매트 입/출고</button>
+                    <button onclick="showSection('admin-section')">재고 관리 페이지</button>
+                </div>
+                <button id="logout-button" class="logout-button">로그아웃</button>
             </div>
 
             <!-- Input Section -->
@@ -1012,7 +1033,7 @@
                 <button id="clear-data" onclick="clearData()">초기화</button>
             </div>
         </div>
-
+    
         <script>
             // 입력 필드 클릭 시 기본 값 0 제거
             function clearValue(element) {
