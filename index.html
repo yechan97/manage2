@@ -666,6 +666,16 @@
             if (currentUserName && category && matName && color && (boxInput > 0 || pieceInput > 0)) {
                 const matFullName = getMatName(category, matName); // 유효화된 이름
                 const boxSize = boxSizes[matFullName] || 1; // 매트 종류에 따른 박스 크기, 기본값 1
+
+                // 디버깅 로그
+                console.log(`matFullName: ${matFullName}, boxSize: ${boxSize}`);
+
+                // 유효성 검사: boxSizes에 matFullName이 존재하는지 확인
+                if (!boxSizes.hasOwnProperty(matFullName)) {
+                    alert(`매트 종류 "${matFullName}"에 대한 박스 크기가 정의되어 있지 않습니다.`);
+                    return;
+                }
+
                 const totalQuantity = (boxInput * boxSize) + pieceInput;
 
                 const entry = { 
@@ -1030,8 +1040,8 @@
 
         function getMatName(category, type) {
             const suffix = matMapping[category] || "";
-            // 모든 점(.)을 언더스코어(_)로 대체
-            return `${type}${suffix}`.replace(/\./g, '_');
+            // 모든 점(.)과 공백을 언더스코어(_)로 대체
+            return `${type}${suffix}`.replace(/[\.\s]+/g, '_');
         }
 
         // 초기화 버튼을 두 개로 분리
