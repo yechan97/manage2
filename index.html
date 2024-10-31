@@ -134,7 +134,7 @@
             display: flex;
             justify-content: center;
             gap: 20px;
-            margin-bottom: 25px;
+                margin-bottom: 25px;
             flex-wrap: wrap;
         }
         .nav-buttons button {
@@ -795,7 +795,7 @@
             }
         }
 
-        // **loadAdminData 함수 수정: 기본 매트 이름을 기준으로 재고 집계**
+        // **loadAdminData 함수 수정: 기본 매트 이름으로 집계하지 않고, 전체 매트 이름으로 개별 표시**
         function loadAdminData() {
             const stockTableBody = document.getElementById("stock-table-body");
             stockTableBody.innerHTML = "";
@@ -813,20 +813,19 @@
                     };
 
                     if (stockEntries) {
-                        const stockMap = {}; // { baseMatName: { color: quantity } }
+                        const stockMap = {}; // { matFullName: { color: quantity } }
 
                         // 모든 매트 이름과 색상에 대해 재고를 집계
                         for (const matFullName in stockEntries) {
-                            const baseMatName = getBaseMatName(matFullName);
-                            if (!stockMap[baseMatName]) {
-                                stockMap[baseMatName] = { "프렌치바닐라": 0, "솔리드그레이": 0, "베이지코튼": 0 };
+                            if (!stockMap[matFullName]) {
+                                stockMap[matFullName] = { "프렌치바닐라": 0, "솔리드그레이": 0, "베이지코튼": 0 };
                             }
                             for (const color in stockEntries[matFullName]) {
                                 const qty = stockEntries[matFullName][color];
-                                if (stockMap[baseMatName][color] !== undefined) {
-                                    stockMap[baseMatName][color] += qty;
+                                if (stockMap[matFullName][color] !== undefined) {
+                                    stockMap[matFullName][color] += qty;
                                 } else {
-                                    stockMap[baseMatName][color] = qty;
+                                    stockMap[matFullName][color] = qty;
                                 }
                             }
                         }
@@ -1115,13 +1114,43 @@
 
             // 수량과 합계에서 '장' 제거
             for(let R = 1; R <= range.e.r; ++R) { // 첫 번째 행은 헤더이므로 1부터 시작
-                // 합계 컬럼 (5번째 컬럼, 인덱스 4)
-                const cellRefQty = XLSX.utils.encode_cell({c: 4, r: R});
-                if(worksheet[cellRefQty] && typeof worksheet[cellRefQty].v === 'string') {
-                    const num = parseInt(worksheet[cellRefQty].v.replace('장', '').trim());
+                // 프렌치바닐라 컬럼 (2번째 컬럼, 인덱스 1)
+                const cellRefFrVanilla = XLSX.utils.encode_cell({c: 1, r: R});
+                if(worksheet[cellRefFrVanilla] && typeof worksheet[cellRefFrVanilla].v === 'string') {
+                    const num = parseInt(worksheet[cellRefFrVanilla].v.replace('장', '').trim());
                     if(!isNaN(num)) {
-                        worksheet[cellRefQty].v = num;
-                        worksheet[cellRefQty].t = 'n'; // 숫자 타입으로 설정
+                        worksheet[cellRefFrVanilla].v = num;
+                        worksheet[cellRefFrVanilla].t = 'n'; // 숫자 타입으로 설정
+                    }
+                }
+
+                // 솔리드그레이 컬럼 (3번째 컬럼, 인덱스 2)
+                const cellRefSolidGray = XLSX.utils.encode_cell({c: 2, r: R});
+                if(worksheet[cellRefSolidGray] && typeof worksheet[cellRefSolidGray].v === 'string') {
+                    const num = parseInt(worksheet[cellRefSolidGray].v.replace('장', '').trim());
+                    if(!isNaN(num)) {
+                        worksheet[cellRefSolidGray].v = num;
+                        worksheet[cellRefSolidGray].t = 'n'; // 숫자 타입으로 설정
+                    }
+                }
+
+                // 베이지코튼 컬럼 (4번째 컬럼, 인덱스 3)
+                const cellRefBeigeCotton = XLSX.utils.encode_cell({c: 3, r: R});
+                if(worksheet[cellRefBeigeCotton] && typeof worksheet[cellRefBeigeCotton].v === 'string') {
+                    const num = parseInt(worksheet[cellRefBeigeCotton].v.replace('장', '').trim());
+                    if(!isNaN(num)) {
+                        worksheet[cellRefBeigeCotton].v = num;
+                        worksheet[cellRefBeigeCotton].t = 'n'; // 숫자 타입으로 설정
+                    }
+                }
+
+                // 합계 컬럼 (5번째 컬럼, 인덱스 4)
+                const cellRefTotal = XLSX.utils.encode_cell({c: 4, r: R});
+                if(worksheet[cellRefTotal] && typeof worksheet[cellRefTotal].v === 'string') {
+                    const num = parseInt(worksheet[cellRefTotal].v.replace('장', '').trim());
+                    if(!isNaN(num)) {
+                        worksheet[cellRefTotal].v = num;
+                        worksheet[cellRefTotal].t = 'n'; // 숫자 타입으로 설정
                     }
                 }
             }
