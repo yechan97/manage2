@@ -538,7 +538,7 @@
             // 공백과 마침표를 언더스코어로 대체
             matFullName = matFullName.replace(/[\.\s]+/g, '_');
             // '0_5T'를 '0.5T'로 변경
-            matFullName = matFullName.replace("0_5T", "0.5T");
+            matFullName = matFullName.replace(/0_5T/g, "0.5T");
             return matFullName;
         }
 
@@ -680,13 +680,11 @@
 
             if (currentUserName && category && matName && color && (boxInput > 0 || pieceInput > 0)) {
                 const matFullName = getMatName(category, matName); // 유효화된 이름
-                const boxSize = boxSizes[matFullName] || 1; // 매트 종류에 따른 박스 크기, 기본값 1
-
-                // 디버깅 로그
-                console.log(`matFullName: ${matFullName}, boxSize: ${boxSize}`);
+                console.log(`Generated matFullName: ${matFullName}`); // 디버그 로그
+                const boxSize = boxSizes[matFullName];
 
                 // 유효성 검사: boxSizes에 matFullName이 존재하는지 확인
-                if (!boxSizes.hasOwnProperty(matFullName)) {
+                if (typeof boxSize !== 'number') {
                     alert(`매트 종류 "${matFullName}"에 대한 박스 크기가 정의되어 있지 않습니다.`);
                     return;
                 }
@@ -850,10 +848,10 @@
                     const stockEntries = snapshot.val();
                     const stockData = {
                         labels: [],
-                        프렌치바닐라: [],
-                        솔리드그레이: [],
-                        베이지코튼: [],
-                        합계: []
+                        "프렌치바닐라": [],
+                        "솔리드그레이": [],
+                        "베이지코튼": [],
+                        "합계": []
                     };
 
                     if (stockEntries) {
@@ -915,10 +913,10 @@
 
                         // 차트 레이블 설정
                         stockData.labels = matTypes.map(mat => mat.replace(/_/g, ' '));
-                        stockData.프렌치바닐라 = new Array(matTypes.length).fill(0);
-                        stockData.솔리드그레이 = new Array(matTypes.length).fill(0);
-                        stockData.베이지코튼 = new Array(matTypes.length).fill(0);
-                        stockData.합계 = new Array(matTypes.length).fill(0);
+                        stockData["프렌치바닐라"] = new Array(matTypes.length).fill(0);
+                        stockData["솔리드그레이"] = new Array(matTypes.length).fill(0);
+                        stockData["베이지코튼"] = new Array(matTypes.length).fill(0);
+                        stockData["합계"] = new Array(matTypes.length).fill(0);
 
                         // 차트 업데이트
                         updateStockChart(stockData);
@@ -944,28 +942,28 @@
                     datasets: [
                         {
                             label: '프렌치바닐라',
-                            data: data.프렌치바닐라,
+                            data: data["프렌치바닐라"],
                             backgroundColor: 'rgba(168, 213, 226, 0.7)', // 파스텔 블루
                             borderColor: 'rgba(168, 213, 226, 1)',
                             borderWidth: 1
                         },
                         {
                             label: '솔리드그레이',
-                            data: data.솔리드그레이,
+                            data: data["솔리드그레이"],
                             backgroundColor: 'rgba(255, 153, 153, 0.7)', // 파스텔 레드
                             borderColor: 'rgba(255, 153, 153, 1)',
                             borderWidth: 1
                         },
                         {
                             label: '베이지코튼',
-                            data: data.베이지코튼,
+                            data: data["베이지코튼"],
                             backgroundColor: 'rgba(204, 255, 153, 0.7)', // 파스텔 그린
                             borderColor: 'rgba(204, 255, 153, 1)',
                             borderWidth: 1
                         },
                         {
                             label: '합계',
-                            data: data.합계,
+                            data: data["합계"],
                             backgroundColor: 'rgba(255, 206, 86, 0.7)', // 노란색
                             borderColor: 'rgba(255, 206, 86, 1)',
                             borderWidth: 1
