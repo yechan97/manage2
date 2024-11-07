@@ -513,10 +513,10 @@
         const boxSizes = {
             "자이언트플러스": 4,
             "자이언트플러스_R": 4,
-            "자이언트플러스_0.5T": 4,
+            "자이언트플러스_0_5T": 4, // 수정됨: "0.5T" -> "0_5T"
             "빅토리매트": 3,
             "빅토리매트_R": 3,
-            "빅토리매트_0.5T": 3
+            "빅토리매트_0_5T": 3  // 수정됨: "0.5T" -> "0_5T"
         };
 
         const matMapping = {
@@ -535,10 +535,10 @@
 
         // 매트 이름 표준화 함수
         function normalizeMatFullName(matFullName) {
-            // 공백과 마침표를 언더스코어로 대체
+            // 공백과 마침표를 언더스코어(_)로 대체
             matFullName = matFullName.replace(/[\.\s]+/g, '_');
-            // '0_5T'를 '0.5T'로 변경
-            matFullName = matFullName.replace(/0_5T/g, "0.5T");
+            // '0_5T'를 '0.5T'로 변경하지 않음 (Firebase 경로 오류 방지)
+            // matFullName = matFullName.replace(/0_5T/g, "0.5T"); // 제거됨
             return matFullName;
         }
 
@@ -664,10 +664,10 @@
             return `${month}/${day} ${hours}:${minutes}`;
         }
 
-        // **기본 매트 이름 추출 함수 추가**
+        // 기본 매트 이름 추출 함수
         function getBaseMatName(matFullName) {
-            // "_R" 또는 "_0.5T" 접미사를 제거하여 기본 매트 이름을 반환
-            return matFullName.replace(/_(R|0\.5T)$/, '');
+            // "_R" 또는 "_0_5T" 접미사를 제거하여 기본 매트 이름을 반환
+            return matFullName.replace(/_(R|0_5T)$/, '');
         }
 
         function addEntry(type) {
@@ -837,7 +837,7 @@
             }
         }
 
-        // **loadAdminData 함수 수정: 기본 매트 이름으로 집계하지 않고, 전체 매트 이름으로 개별 표시**
+        // loadAdminData 함수 수정: 기본 매트 이름으로 집계하지 않고, 전체 매트 이름으로 개별 표시
         function loadAdminData() {
             const stockTableBody = document.getElementById("stock-table-body");
             stockTableBody.innerHTML = "";
@@ -1358,7 +1358,7 @@
                     Object.values(entries).forEach(entry => {
                         // matFullName을 가져올 때 getMatName 함수를 사용하여 유효화
                         let { matName, color, quantity, type } = entry;
-                        // "0 5T"를 "0.5T"로 교체하여 표준화
+                        // "0 5T"를 "0_5T"로 교체하여 표준화
                         matName = normalizeMatFullName(matName);
 
                         if (!stockMap[matName]) {
