@@ -278,18 +278,20 @@
         /* 총 수량 스타일 */
         .total-quantity {
             display: flex;
-            align-items: center;
+            flex-direction: column;
+            align-items: flex-start;
             gap: 10px;
             margin-top: 10px;
         }
-        .total-quantity label {
-            font-size: 20px;
+        .total-quantity .category-total {
+            font-size: 18px;
             color: #555555; /* 진한 회색 */
         }
-        .total-quantity span {
+        .total-quantity .grand-total {
             font-size: 20px;
             font-weight: bold;
             color: #333333; /* 다크 그레이 */
+            margin-top: 10px;
         }
         /* Admin Page Styles */
         table {
@@ -693,7 +695,8 @@
             const categories = ["정상", "리퍼브", "0.5T"];
             const entryData = {};
 
-            let totalQuantity = 0;
+            let grandTotalQuantity = 0;
+            const categoryTotals = {};
 
             for (let category of categories) {
                 const boxInput = parseInt(document.getElementById(`boxes-${category}`).value, 10) || 0;
@@ -709,11 +712,12 @@
                     matFullName: matFullName
                 };
 
-                totalQuantity += quantity;
+                categoryTotals[category] = quantity;
+                grandTotalQuantity += quantity;
             }
 
             // 총 수량이 0보다 커야 함
-            if (totalQuantity <= 0) {
+            if (grandTotalQuantity <= 0) {
                 alert("총 수량이 0보다 커야 합니다.");
                 return;
             }
@@ -866,7 +870,7 @@
             const stockTableBody = document.getElementById("stock-table-body");
             stockTableBody.innerHTML = "";
 
-            // Firebase의 stock 노드에서 재고 데이터 로드
+            // Firebase의 stock 노드에서 재고 데이터 실시간으로 로드
             firebase.database().ref('stock').on('value', (snapshot) => {
                 const stockEntries = snapshot.val();
 
@@ -1103,18 +1107,18 @@
                     const tbody = document.createElement("tbody");
                     entriesArray.forEach(entry => {
                         const formattedTime = formatTimestamp(entry.timestamp);
-                        const row = document.createElement("tr");
-                        row.innerHTML = `
-                            <td>${entry.name}</td>
-                            <td>${entry.category}</td>
-                            <td>${entry.matName.replace(/_/g, ' ')}</td>
-                            <td>${entry.color}</td>
-                            <td>${entry.quantity}장</td>
-                            <td>${entry.type}</td>
-                            <td>${entry.notes}</td>
-                            <td>${formattedTime}</td>
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>${entry.name}</td>
+                                <td>${entry.category}</td>
+                                <td>${entry.matName.replace(/_/g, ' ')}</td>
+                                <td>${entry.color}</td>
+                                <td>${entry.quantity}장</td>
+                                <td>${entry.type}</td>
+                                <td>${entry.notes}</td>
+                                <td>${formattedTime}</td>
+                            </tr>
                         `;
-                        tbody.appendChild(row);
                     });
                     tempTable.appendChild(tbody);
 
@@ -1176,19 +1180,41 @@
         // 총 수량 계산 함수
         function calculateTotalQuantity() {
             const categories = ["정상", "리퍼브", "0.5T"];
-            let totalQuantity = 0;
+            let grandTotalQuantity = 0;
+            const categoryTotals = {};
 
             for (let category of categories) {
                 const boxes = parseInt(document.getElementById(`boxes-${category}`).value, 10) || 0;
                 const pieces = parseInt(document.getElementById(`pieces-${category}`).value, 10) || 0;
                 const matType = document.getElementById("mat-name").value;
+                if (!matType) continue; // 매트 종류가 선택되지 않았을 경우
+
                 const matFullName = getMatName(category, matType);
                 const boxSize = boxSizes[matFullName] || 1; // 매트 종류에 따른 박스 크기, 기본값 1
                 const quantity = (boxes * boxSize) + pieces;
-                totalQuantity += quantity;
+                categoryTotals[category] = quantity;
+                grandTotalQuantity += quantity;
             }
 
-            document.getElementById("total-quantity").innerText = totalQuantity;
+            // UI 업데이트
+            const totalQuantityDiv = document.getElementById("total-quantity");
+            const categoryTotalDiv = document.getElementById("category-totals");
+
+            if (categoryTotalDiv) {
+                categoryTotalDiv.remove();
+            }
+
+            // 새로운 카테고리별 총 수량 표시
+            const newCategoryTotalDiv = document.createElement("div");
+            newCategoryTotalDiv.id = "category-totals";
+            newCategoryTotalDiv.classList.add("category-totals");
+
+            for (let category of categories) {
+                newCategoryTotalDiv.innerHTML += `<div class="category-total">${category}: ${categoryTotals[category]}장</div>`;
+            }
+            newCategoryTotalDiv.innerHTML += `<div class="grand-total">총 수량: ${grandTotalQuantity}장</div>`;
+
+            totalQuantityDiv.parentNode.insertBefore(newCategoryTotalDiv, totalQuantityDiv.nextSibling);
         }
 
         // 이벤트 리스너 추가 함수
@@ -1344,6 +1370,11 @@
                     <span id="total-quantity">0</span>
                 </div>
 
+                <!-- 카테고리별 총 수량 및 전체 총 수량 표시 -->
+                <div id="category-totals" class="category-totals">
+                    <!-- JavaScript에 의해 동적으로 추가됩니다 -->
+                </div>
+
                 <div class="form-group">
                     <label for="notes">비고:</label>
                     <textarea id="notes" placeholder="비고 내용을 입력하세요."></textarea>
@@ -1414,8 +1445,6 @@
                     </table>
                 </div>
 
-                <!-- 차트 표시 섹션 삭제됨 -->
-
                 <!-- 초기화 버튼 두 개로 분리 -->
                 <div class="export-buttons">
                     <button id="clear-stock" onclick="clearStock()">재고 내역 초기화</button>
@@ -1427,12 +1456,8 @@
         <script>
             // 입력 필드 클릭 시 기본 값 0 제거
             function clearValue(element) {
-                if (element.placeholder === "박스" && element.value === "") {
-                    element.placeholder = "박스";
-                }
-                if (element.placeholder === "낱장" && element.value === "") {
-                    element.placeholder = "낱장";
-                }
+                // Placeholder는 이미 설정되어 있으므로, 단순히 값을 지웁니다
+                element.value = "";
             }
         </script>
     </div>
