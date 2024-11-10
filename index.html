@@ -8,8 +8,9 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap">
     <!-- SheetJS 라이브러리 추가 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- Chart.js 라이브러리 추가 -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Firebase SDK 추가 -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
         /* 전체 페이지 배경색 설정 */
         body {
@@ -466,12 +467,32 @@
             align-items: center;
             margin-bottom: 20px;
         }
+        /* 새로운 구조를 위한 스타일 추가 */
+        .category-group {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #fff8f0; /* 아주 연한 파스텔 오렌지 */
+            border-radius: 8px;
+        }
+        .category-group h3 {
+            margin-bottom: 10px;
+            font-size: 20px;
+            color: #555555;
+        }
+        .category-entry {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .category-entry label {
+            flex: 1;
+            font-size: 18px;
+        }
+        .category-entry input[type="number"] {
+            width: 80px;
+        }
     </style>
-    
-    <!-- Firebase SDK 추가 -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    
     <script>
         // Firebase 설정 객체
         const firebaseConfig = {
@@ -665,78 +686,105 @@
         }
 
         function addEntry(type) {
-            const category = document.getElementById("mat-type").value;
-            const matName = document.getElementById("mat-name").value;
+            const matType = document.getElementById("mat-name").value;
             const color = document.getElementById("mat-color").value;
-            const boxInput = parseInt(document.getElementById("boxes").value, 10) || 0; // 박스 입력
-            const pieceInput = parseInt(document.getElementById("pieces").value, 10) || 0; // 낱장 입력
-            const notes = document.getElementById("notes").value.trim();
 
-            if (currentUserName && category && matName && color && (boxInput > 0 || pieceInput > 0)) {
-                const matFullName = getMatName(category, matName); // 유효화된 이름
-                console.log(`Generated matFullName: ${matFullName}`); // 디버그 로그
-                const boxSize = boxSizes[matFullName];
+            // 각 구분별 박스와 장수 입력값 가져오기
+            const categories = ["정상", "리퍼브", "0.5T"];
+            const entryData = {};
 
-                // 유효성 검사: boxSizes에 matFullName이 존재하는지 확인
-                if (typeof boxSize !== 'number') {
-                    alert(`매트 종류 "${matFullName}"에 대한 박스 크기가 정의되어 있지 않습니다.`);
-                    return;
-                }
+            let totalQuantity = 0;
 
-                const totalQuantity = (boxInput * boxSize) + pieceInput;
+            for (let category of categories) {
+                const boxInput = parseInt(document.getElementById(`boxes-${category}`).value, 10) || 0;
+                const pieceInput = parseInt(document.getElementById(`pieces-${category}`).value, 10) || 0;
+                const matFullName = getMatName(category, matType);
+                const boxSize = boxSizes[matFullName] || 1; // 매트 종류에 따른 박스 크기, 기본값 1
+                const quantity = (boxInput * boxSize) + pieceInput;
 
-                // 출고 시 재고 부족 여부 확인 제거
-                proceedEntry(matFullName, color, totalQuantity, type, notes);
-            } else {
-                alert("모든 필드를 정확히 입력해주세요! (박스 또는 낱장 중 하나는 필수)");
+                entryData[category] = {
+                    boxes: boxInput,
+                    pieces: pieceInput,
+                    quantity: quantity,
+                    matFullName: matFullName
+                };
+
+                totalQuantity += quantity;
             }
-        }
 
-        function proceedEntry(matFullName, color, totalQuantity, type, notes) {
-            const entry = { 
-                name: currentUserName, 
-                category: getCategoryFromMatFullName(matFullName), 
-                matName: matFullName, 
-                color, 
-                quantity: totalQuantity, 
-                type, 
-                notes, 
-                timestamp: Date.now(),
-                boxes: parseInt(document.getElementById("boxes").value, 10) || 0, // 박스 수량 저장 (추가)
-                pieces: parseInt(document.getElementById("pieces").value, 10) || 0 // 낱장 수량 저장 (추가)
-            };
+            // 총 수량이 0보다 커야 함
+            if (totalQuantity <= 0) {
+                alert("총 수량이 0보다 커야 합니다.");
+                return;
+            }
 
-            // Firebase에 entry 추가
-            const newEntryKey = firebase.database().ref().child('entries').push().key;
+            // 입출고 타입 확인
+            if (!["입고", "출고"].includes(type)) {
+                alert("올바르지 않은 입출고 타입입니다.");
+                return;
+            }
+
+            // Firebase에 여러 구분에 대한 엔트리 추가
+            const entriesRef = firebase.database().ref('entries');
             const updates = {};
-            updates['/entries/' + newEntryKey] = entry;
+            const timestamp = Date.now();
 
-            // entry를 추가하고, 그 다음에 stock을 transaction으로 업데이트
+            for (let category of categories) {
+                const { boxes, pieces, quantity, matFullName } = entryData[category];
+                if (boxes === 0 && pieces === 0) continue; // 입력이 없으면 건너뜀
+
+                const entry = { 
+                    name: currentUserName, 
+                    category: category, 
+                    matName: matFullName, 
+                    color, 
+                    quantity: quantity, 
+                    type, 
+                    notes: document.getElementById("notes").value.trim(),
+                    timestamp: timestamp,
+                    boxes: boxes,
+                    pieces: pieces
+                };
+
+                const newEntryKey = entriesRef.push().key;
+                updates['/entries/' + newEntryKey] = entry;
+            }
+
+            // 엔트리 업데이트 및 재고 변경
             firebase.database().ref().update(updates)
                 .then(() => {
-                    const stockPath = `/stock/${matFullName}/${color}`;
-                    const stockRef = firebase.database().ref(stockPath);
-                    return stockRef.transaction(current => {
-                        return (current || 0) + (type === "입고" ? totalQuantity : -totalQuantity);
-                    });
-                })
-                .then((result) => {
-                    if (result.committed) {
-                        // UI 업데이트
-                        document.getElementById("notes").value = "";
-                        document.getElementById("boxes").value = "0"; // 박스 초기화
-                        document.getElementById("pieces").value = "0"; // 낱장 초기화
-                        document.getElementById("total-quantity").innerText = "0"; // 총 수량 초기화
-                        alert("데이터가 성공적으로 저장되었습니다.");
-                        // 재고 테이블 업데이트
-                        loadAdminData();
-                    } else {
-                        alert("재고 업데이트가 취소되었습니다.");
+                    // 재고 업데이트 트랜잭션
+                    const stockUpdates = {};
+                    for (let category of categories) {
+                        const { quantity, matFullName, color } = entryData[category];
+                        if (quantity === 0) continue;
+
+                        const stockPath = `/stock/${matFullName}/${color}`;
+                        stockUpdates[stockPath] = firebase.database().ref(stockPath).transaction(current => {
+                            return (current || 0) + (type === "입고" ? quantity : -quantity);
+                        });
                     }
+                    return Promise.all(Object.values(stockUpdates));
+                })
+                .then(() => {
+                    // UI 업데이트
+                    resetInputFields();
+                    alert("데이터가 성공적으로 저장되었습니다.");
+                    loadAdminData();
                 })
                 .catch((error) => {
                     alert("데이터 저장 중 오류 발생: " + error.message);
                 });
+        }
+
+        function resetInputFields() {
+            const categories = ["정상", "리퍼브", "0.5T"];
+            for (let category of categories) {
+                document.getElementById(`boxes-${category}`).value = "0";
+                document.getElementById(`pieces-${category}`).value = "0";
+            }
+            document.getElementById("total-quantity").innerText = "0";
+            document.getElementById("notes").value = "";
         }
 
         // 카테고리 복원 함수
@@ -760,7 +808,7 @@
                     const entries = snapshot.val();
                     if (entries) {
                         const entriesArray = Object.values(entries);
-                        // 최신 순으로 내림차순 정렬 (오름차순이 아닌 내림차순)
+                        // 최신 순으로 내림차순 정렬
                         entriesArray.sort((a, b) => b.timestamp - a.timestamp);
                         entriesArray.forEach(entry => {
                             const formattedTime = formatTimestamp(entry.timestamp);
@@ -1126,22 +1174,31 @@
 
         // 총 수량 계산 함수
         function calculateTotalQuantity() {
-            const boxes = parseInt(document.getElementById("boxes").value, 10) || 0;
-            const pieces = parseInt(document.getElementById("pieces").value, 10) || 0;
-            const matName = document.getElementById("mat-name").value;
-            const category = document.getElementById("mat-type").value;
-            const matFullName = getMatName(category, matName);
-            const boxSize = boxSizes[matFullName] || 1; // 매트 종류에 따른 박스 크기, 기본값 1
-            const totalQuantity = (boxes * boxSize) + pieces;
+            const categories = ["정상", "리퍼브", "0.5T"];
+            let totalQuantity = 0;
+
+            for (let category of categories) {
+                const boxes = parseInt(document.getElementById(`boxes-${category}`).value, 10) || 0;
+                const pieces = parseInt(document.getElementById(`pieces-${category}`).value, 10) || 0;
+                const matType = document.getElementById("mat-name").value;
+                const matFullName = getMatName(category, matType);
+                const boxSize = boxSizes[matFullName] || 1; // 매트 종류에 따른 박스 크기, 기본값 1
+                const quantity = (boxes * boxSize) + pieces;
+                totalQuantity += quantity;
+            }
+
             document.getElementById("total-quantity").innerText = totalQuantity;
         }
 
         // 이벤트 리스너 추가 함수
         function addEventListeners() {
-            document.getElementById("boxes").addEventListener("input", calculateTotalQuantity);
-            document.getElementById("pieces").addEventListener("input", calculateTotalQuantity);
-            document.getElementById("mat-type").addEventListener("change", calculateTotalQuantity);
+            const categories = ["정상", "리퍼브", "0.5T"];
+            for (let category of categories) {
+                document.getElementById(`boxes-${category}`).addEventListener("input", calculateTotalQuantity);
+                document.getElementById(`pieces-${category}`).addEventListener("input", calculateTotalQuantity);
+            }
             document.getElementById("mat-name").addEventListener("change", calculateTotalQuantity);
+            document.getElementById("mat-color").addEventListener("change", calculateTotalQuantity);
         }
 
         // 재고 동기화 함수
@@ -1167,9 +1224,7 @@
 
                     // 모든 입출고 기록을 순회하여 재고 계산
                     Object.values(entries).forEach(entry => {
-                        // matFullName을 가져올 때 getMatName 함수를 사용하여 유효화
                         let { matName, color, quantity, type } = entry;
-                        // "0 5T"를 "0_5T"로 교체하여 표준화
                         matName = normalizeMatFullName(matName);
 
                         if (!stockMap[matName]) {
@@ -1245,44 +1300,47 @@
                 <h1 class="input-header">토리매트 입/출고</h1>
 
                 <div class="form-group">
-                    <label for="mat-type">구분:</label>
-                    <select id="mat-type">
-                        <option>정상</option>
-                        <option>리퍼브</option>
-                        <option>0.5T</option>
-                    </select>
-
                     <label for="mat-name">매트 종류:</label>
                     <select id="mat-name">
+                        <option value="" disabled selected>매트 종류를 선택하세요</option>
                         <option>자이언트플러스</option>
                         <option>빅토리매트</option>
                     </select>
 
                     <label for="mat-color">색상:</label>
                     <select id="mat-color">
+                        <option value="" disabled selected>색상을 선택하세요</option>
                         <option>프렌치바닐라</option>
                         <option>솔리드그레이</option>
                         <option>베이지코튼</option>
                     </select>
                 </div>
 
-                <!-- 수량을 박스와 낱장으로 분리 -->
-                <div class="form-group">
-                    <div class="quantity-group">
-                        <div class="form-group">
-                            <label for="boxes">박스:</label>
-                            <input type="number" id="boxes" min="0" value="0" onfocus="clearValue(this)">
-                        </div>
-                        <div class="form-group">
-                            <label for="pieces">낱장:</label>
-                            <input type="number" id="pieces" min="0" value="0" onfocus="clearValue(this)">
-                        </div>
+                <!-- 구분별 박스와 장수 입력 -->
+                <div class="category-group" id="category-group">
+                    <h3>구분별 입력</h3>
+                    <!-- 각 구분에 대한 입력 필드 -->
+                    <div class="category-entry">
+                        <label for="boxes-정상">정상:</label>
+                        <input type="number" id="boxes-정상" min="0" value="0" onfocus="clearValue(this)">
+                        <input type="number" id="pieces-정상" min="0" value="0" onfocus="clearValue(this)" placeholder="장수">
                     </div>
-                    <!-- 총 수량 표시 -->
-                    <div class="total-quantity">
-                        <label>총 수량:</label>
-                        <span id="total-quantity">0</span>
+                    <div class="category-entry">
+                        <label for="boxes-리퍼브">리퍼브:</label>
+                        <input type="number" id="boxes-리퍼브" min="0" value="0" onfocus="clearValue(this)">
+                        <input type="number" id="pieces-리퍼브" min="0" value="0" onfocus="clearValue(this)" placeholder="장수">
                     </div>
+                    <div class="category-entry">
+                        <label for="boxes-0.5T">0.5T:</label>
+                        <input type="number" id="boxes-0.5T" min="0" value="0" onfocus="clearValue(this)">
+                        <input type="number" id="pieces-0.5T" min="0" value="0" onfocus="clearValue(this)" placeholder="장수">
+                    </div>
+                </div>
+
+                <!-- 총 수량 표시 -->
+                <div class="total-quantity">
+                    <label>총 수량:</label>
+                    <span id="total-quantity">0</span>
                 </div>
 
                 <div class="form-group">
