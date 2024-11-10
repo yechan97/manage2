@@ -490,13 +490,13 @@
     <script>
         // Firebase 설정 객체
         const firebaseConfig = {
-          apiKey: "AIzaSyC6Mwjy94nr1zf4xPMWU8EqB__9cRZiMcs",
-          authDomain: "manage-dee73.firebaseapp.com",
-          databaseURL: "https://manage-dee73-default-rtdb.asia-southeast1.firebasedatabase.app",
-          projectId: "manage-dee73",
-          storageBucket: "manage-dee73.appspot.com",
-          messagingSenderId: "519840861970",
-          appId: "1:519840861970:web:4e7dfc39cb112e8c8badcb"
+          apiKey: "YOUR_API_KEY", // 실제 Firebase 프로젝트의 API 키로 교체해주세요.
+          authDomain: "YOUR_AUTH_DOMAIN",
+          databaseURL: "YOUR_DATABASE_URL",
+          projectId: "YOUR_PROJECT_ID",
+          storageBucket: "YOUR_STORAGE_BUCKET",
+          messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+          appId: "YOUR_APP_ID"
         };
         
         // Firebase 초기화
@@ -542,6 +542,16 @@
         function normalizeMatFullName(matFullName) {
             // 공백만 언더스코어(_)로 대체
             return matFullName.replace(/\s+/g, '_');
+        }
+
+        // 키 인코딩 함수: 마침표를 쉼표로 대체
+        function encodeKey(key) {
+            return key.replace(/\./g, ',');
+        }
+
+        // 키 디코딩 함수: 쉼표를 마침표로 복원
+        function decodeKey(key) {
+            return key.replace(/,/g, '.');
         }
 
         document.addEventListener("DOMContentLoaded", () => {
@@ -666,7 +676,7 @@
             return `${month}/${day} ${hours}:${minutes}`;
         }
 
-        // 매트 이름 생성 함수 수정
+        // 매트 이름 생성 함수
         function getMatName(category, type) {
             const suffix = matMapping[category] || "";
             const matName = `${type}${suffix}`;
@@ -756,7 +766,7 @@
                     const { quantity, matFullName, color } = entryData[category];
                     if (quantity === 0) continue;
 
-                    const stockPath = `/stock/${matFullName}/${color}`;
+                    const stockPath = `/stock/${encodeKey(matFullName)}/${color}`;
                     console.log("Stock Update Path:", stockPath); // 디버깅용 로그
                     const stockRef = firebase.database().ref(stockPath);
                     const promise = stockRef.transaction(current => {
@@ -866,12 +876,13 @@
                     const stockMap = {};
 
                     // 모든 매트 이름과 색상에 대해 재고를 집계
-                    for (let matFullName in stockEntries) {
+                    for (let encodedMatFullName in stockEntries) {
+                        const matFullName = decodeKey(encodedMatFullName);
                         if (!stockMap[matFullName]) {
                             stockMap[matFullName] = { "프렌치바닐라": 0, "솔리드그레이": 0, "베이지코튼": 0 };
                         }
-                        for (let color in stockEntries[matFullName]) {
-                            const qty = stockEntries[matFullName][color];
+                        for (let color in stockEntries[encodedMatFullName]) {
+                            const qty = stockEntries[encodedMatFullName][color];
                             stockMap[matFullName][color] = qty;
                         }
                     }
@@ -982,9 +993,77 @@
             }
         }
 
-        // 엑셀 저장 함수 등 나머지 함수들은 이전과 동일하므로 생략합니다.
+        // 재고 동기화 함수에서도 키 인코딩 적용
+        function synchronizeStock() {
+            if (!isAdmin) {
+                alert("재고 동기화는 관리자만 가능합니다.");
+                return;
+            }
 
-        // 입력 필드 클릭 시 기본 값 0 제거
+            if (!confirm("입출고 기록을 바탕으로 재고를 동기화하시겠습니까? 이 작업은 기존 재고 데이터를 덮어씁니다.")) {
+                return;
+            }
+
+            // 로딩 인디케이터 표시
+            document.getElementById("loading-indicator").style.display = "flex";
+
+            firebase.database().ref('entries').once('value')
+                .then((snapshot) => {
+                    const entries = snapshot.val();
+                    if (!entries) {
+                        alert("입출고 기록이 없습니다. 동기화를 진행할 수 없습니다.");
+                        return;
+                    }
+
+                    const stockMap = {};
+
+                    // 모든 입출고 기록을 순회하여 재고 계산
+                    Object.values(entries).forEach(entry => {
+                        let { matName, color, quantity, type } = entry;
+
+                        // matName을 키로 사용할 때 인코딩 적용
+                        const encodedMatName = encodeKey(matName);
+
+                        if (!stockMap[encodedMatName]) {
+                            stockMap[encodedMatName] = {};
+                        }
+                        if (!stockMap[encodedMatName][color]) {
+                            stockMap[encodedMatName][color] = 0;
+                        }
+
+                        if (type === "입고") {
+                            stockMap[encodedMatName][color] += quantity;
+                        } else if (type === "출고") {
+                            stockMap[encodedMatName][color] -= quantity;
+                        }
+                    });
+
+                    // Firebase의 stock 노드를 업데이트
+                    const updates = {};
+                    for (const encodedMat in stockMap) {
+                        for (const color in stockMap[encodedMat]) {
+                            updates[`/stock/${encodedMat}/${color}`] = stockMap[encodedMat][color];
+                        }
+                    }
+
+                    return firebase.database().ref().update(updates);
+                })
+                .then(() => {
+                    alert("재고가 성공적으로 동기화되었습니다.");
+                    loadAdminData();
+                })
+                .catch((error) => {
+                    alert("재고 동기화 중 오류 발생: " + error.message);
+                })
+                .finally(() => {
+                    // 로딩 인디케이터 숨기기
+                    document.getElementById("loading-indicator").style.display = "none";
+                });
+        }
+
+        // 나머지 스크립트는 이전과 동일합니다.
+
+        // 입력 필드 클릭 시 기본 값 제거
         function clearValue(element) {
             element.value = "";
         }
