@@ -494,7 +494,7 @@
           authDomain: "manage-dee73.firebaseapp.com",
           databaseURL: "https://manage-dee73-default-rtdb.asia-southeast1.firebasedatabase.app",
           projectId: "manage-dee73",
-          storageBucket: "manage-dee73.appspot.com",
+          storageBucket: "manage-dee73.firebasestorage.app",
           messagingSenderId: "519840861970",
           appId: "1:519840861970:web:4e7dfc39cb112e8c8badcb"
         };
@@ -503,6 +503,7 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
+        // 나머지 JavaScript 코드는 이전과 동일합니다.
         // 허용된 이름 목록
         const allowedNames = [
             "김수재",
@@ -530,8 +531,8 @@
 
         const matMapping = {
             "정상": "",
-            "리퍼브": " R",
-            "0.5T": " 0.5T"
+            "리퍼브": "_R",
+            "0.5T": "_0_5T"
         };
 
         // 현재 로그인한 사용자 이름 저장
@@ -762,6 +763,7 @@
                     if (quantity === 0) continue;
 
                     const stockPath = `/stock/${matFullName}/${color}`;
+                    console.log("Stock Update Path:", stockPath); // 디버깅용 로그
                     const stockRef = firebase.database().ref(stockPath);
                     const promise = stockRef.transaction(current => {
                         return (current || 0) + (type === "입고" ? quantity : -quantity);
@@ -801,7 +803,7 @@
         // 카테고리 복원 함수
         function getCategoryFromMatFullName(matFullName) {
             for (const [key, suffix] of Object.entries(matMapping)) {
-                const normalizedSuffix = normalizeMatFullName(suffix).replace("_", ""); // Remove underscore for comparison
+                const normalizedSuffix = normalizeMatFullName(suffix).replace("_", ""); // 언더스코어 제거
                 if (normalizedSuffix && matFullName.endsWith(normalizedSuffix)) {
                     return key;
                 }
@@ -876,24 +878,21 @@
 
             firebase.database().ref('stock').on('value', (snapshot) => {
                 const stockEntries = snapshot.val();
+                console.log("Stock Entries:", stockEntries); // 디버깅용 로그
 
                 if (stockEntries) {
                     const stockMap = {};
 
                     // 모든 매트 이름과 색상에 대해 재고를 집계
                     for (let matFullName in stockEntries) {
-                        matFullName = normalizeMatFullName(matFullName);
+                        // matFullName = normalizeMatFullName(matFullName); // 중복 호출 제거
 
                         if (!stockMap[matFullName]) {
                             stockMap[matFullName] = { "프렌치바닐라": 0, "솔리드그레이": 0, "베이지코튼": 0 };
                         }
                         for (let color in stockEntries[matFullName]) {
                             const qty = stockEntries[matFullName][color];
-                            if (stockMap[matFullName][color] !== undefined) {
-                                stockMap[matFullName][color] += qty;
-                            } else {
-                                stockMap[matFullName][color] = qty;
-                            }
+                            stockMap[matFullName][color] = qty;
                         }
                     }
 
@@ -1256,7 +1255,7 @@
                     // 모든 입출고 기록을 순회하여 재고 계산
                     Object.values(entries).forEach(entry => {
                         let { matName, color, quantity, type } = entry;
-                        matName = normalizeMatFullName(matName);
+                        // matName = normalizeMatFullName(matName); // 이미 저장된 matName을 그대로 사용
 
                         if (!stockMap[matName]) {
                             stockMap[matName] = {};
@@ -1467,5 +1466,6 @@
                 element.value = "";
             }
         </script>
-    </body>
+    </div>
+</body>
 </html>
