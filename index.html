@@ -486,6 +486,18 @@
         .category-entry input[type="number"] {
             width: 80px;
         }
+        /* 카테고리별 총 수량 표시 스타일 */
+        .category-totals {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #e0f7fa;
+            border-radius: 8px;
+        }
+        .category-totals .category-total, .category-totals .grand-total {
+            font-size: 18px;
+            margin-bottom: 5px;
+            color: #006064;
+        }
     </style>
     <script>
         // Firebase 설정 객체
@@ -704,7 +716,7 @@
                 const boxInput = parseInt(document.getElementById(`boxes-${category}`).value, 10) || 0;
                 const pieceInput = parseInt(document.getElementById(`pieces-${category}`).value, 10) || 0;
                 const matFullName = getMatName(category, matType);
-                const boxSize = boxSizes[matFullName] || 1; // 매트 종류에 따른 박스 크기, 기본값 1
+                const boxSize = boxSizes[matType] || 1; // 매트 종류에 따른 박스 크기, 기본값 1
                 const quantity = (boxInput * boxSize) + pieceInput;
 
                 entryData[category] = {
@@ -993,7 +1005,232 @@
             }
         }
 
-        // 재고 동기화 함수에서도 키 인코딩 적용
+        // 엑셀 저장 함수: 재고 내역
+        function exportStock() {
+            const table = document.getElementById('stock-table');
+            const workbook = XLSX.utils.table_to_book(table, {sheet:"재고내역"});
+
+            // 워크시트 가져오기
+            const worksheet = workbook.Sheets["재고내역"];
+
+            // 헤더 스타일링: 첫 번째 행을 굵게(Bold)
+            const range = XLSX.utils.decode_range(worksheet['!ref']);
+            for(let C = range.s.c; C <= range.e.c; ++C) {
+                const cell_address = {c: C, r: 0};
+                const cell_ref = XLSX.utils.encode_cell(cell_address);
+                if(!worksheet[cell_ref]) continue;
+                if(!worksheet[cell_ref].s) worksheet[cell_ref].s = {};
+                worksheet[cell_ref].s.font = { bold: true };
+            }
+
+            // 열 너비 설정
+            worksheet['!cols'] = [
+                { wch: 20 }, // 매트 종류
+                { wch: 20 }, // 프렌치바닐라
+                { wch: 20 }, // 솔리드그레이
+                { wch: 20 }, // 베이지코튼
+                { wch: 10 }  // 합계
+            ];
+
+            // 수량과 합계에서 '장' 제거
+            for(let R = 1; R <= range.e.r; ++R) { // 첫 번째 행은 헤더이므로 1부터 시작
+                // 프렌치바닐라 컬럼 (2번째 컬럼, 인덱스 1)
+                const cellRefFrVanilla = XLSX.utils.encode_cell({c: 1, r: R});
+                if(worksheet[cellRefFrVanilla] && typeof worksheet[cellRefFrVanilla].v === 'string') {
+                    const num = parseInt(worksheet[cellRefFrVanilla].v.replace('장', '').trim(), 10);
+                    if(!isNaN(num)) {
+                        worksheet[cellRefFrVanilla].v = num;
+                        worksheet[cellRefFrVanilla].t = 'n'; // 숫자 타입으로 설정
+                    }
+                }
+
+                // 솔리드그레이 컬럼 (3번째 컬럼, 인덱스 2)
+                const cellRefSolidGray = XLSX.utils.encode_cell({c: 2, r: R});
+                if(worksheet[cellRefSolidGray] && typeof worksheet[cellRefSolidGray].v === 'string') {
+                    const num = parseInt(worksheet[cellRefSolidGray].v.replace('장', '').trim(), 10);
+                    if(!isNaN(num)) {
+                        worksheet[cellRefSolidGray].v = num;
+                        worksheet[cellRefSolidGray].t = 'n'; // 숫자 타입으로 설정
+                    }
+                }
+
+                // 베이지코튼 컬럼 (4번째 컬럼, 인덱스 3)
+                const cellRefBeigeCotton = XLSX.utils.encode_cell({c: 3, r: R});
+                if(worksheet[cellRefBeigeCotton] && typeof worksheet[cellRefBeigeCotton].v === 'string') {
+                    const num = parseInt(worksheet[cellRefBeigeCotton].v.replace('장', '').trim(), 10);
+                    if(!isNaN(num)) {
+                        worksheet[cellRefBeigeCotton].v = num;
+                        worksheet[cellRefBeigeCotton].t = 'n'; // 숫자 타입으로 설정
+                    }
+                }
+
+                // 합계 컬럼 (5번째 컬럼, 인덱스 4)
+                const cellRefTotal = XLSX.utils.encode_cell({c: 4, r: R});
+                if(worksheet[cellRefTotal] && typeof worksheet[cellRefTotal].v === 'string') {
+                    const num = parseInt(worksheet[cellRefTotal].v.replace('장', '').trim(), 10);
+                    if(!isNaN(num)) {
+                        worksheet[cellRefTotal].v = num;
+                        worksheet[cellRefTotal].t = 'n'; // 숫자 타입으로 설정
+                    }
+                }
+            }
+
+            // 워크북에 수정된 워크시트 다시 설정
+            workbook.Sheets["재고내역"] = worksheet;
+
+            // 워크북 저장
+            const date = new Date();
+            const formattedDate = `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2,'0')}${date.getDate().toString().padStart(2,'0')}`;
+            const filename = `${formattedDate}_재고내역.xlsx`;
+            XLSX.writeFile(workbook, filename);
+        }
+
+        // 엑셀 저장 함수: 입출고 기록
+        function exportRecords() {
+            // 먼저 데이터를 새 배열로 복사하고, 오름차순으로 정렬
+            firebase.database().ref('entries').once('value')
+                .then((snapshot) => {
+                    const adminEntries = snapshot.val();
+                    let entriesArray = [];
+                    if (adminEntries) {
+                        entriesArray = Object.values(adminEntries);
+                        // 오래된 순으로 오름차순 정렬
+                        entriesArray.sort((a, b) => a.timestamp - b.timestamp);
+                    }
+
+                    // 임시 테이블 생성
+                    const tempTable = document.createElement("table");
+                    const thead = document.createElement("thead");
+                    thead.innerHTML = `
+                        <tr>
+                            <th>이름</th>
+                            <th>구분</th>
+                            <th>매트 종류</th>
+                            <th>색상</th>
+                            <th>수량</th>
+                            <th>입출고</th>
+                            <th>비고</th>
+                            <th>작성시간</th>
+                        </tr>
+                    `;
+                    tempTable.appendChild(thead);
+
+                    const tbody = document.createElement("tbody");
+                    entriesArray.forEach(entry => {
+                        const formattedTime = formatTimestamp(entry.timestamp);
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>${entry.name}</td>
+                                <td>${entry.category}</td>
+                                <td>${entry.matName.replace(/_/g, ' ')}</td>
+                                <td>${entry.color}</td>
+                                <td>${entry.quantity}장</td>
+                                <td>${entry.type}</td>
+                                <td>${entry.notes}</td>
+                                <td>${formattedTime}</td>
+                            </tr>
+                        `;
+                    });
+                    tempTable.appendChild(tbody);
+
+                    // SheetJS를 사용하여 엑셀로 변환
+                    const workbook = XLSX.utils.table_to_book(tempTable, {sheet:"입출고기록"});
+
+                    // 워크시트 가져오기
+                    const worksheet = workbook.Sheets["입출고기록"];
+
+                    // 헤더 스타일링: 첫 번째 행을 굵게(Bold)
+                    const range = XLSX.utils.decode_range(worksheet['!ref']);
+                    for(let C = range.s.c; C <= range.e.c; ++C) {
+                        const cell_address = {c: C, r: 0};
+                        const cell_ref = XLSX.utils.encode_cell(cell_address);
+                        if(!worksheet[cell_ref]) continue;
+                        if(!worksheet[cell_ref].s) worksheet[cell_ref].s = {};
+                        worksheet[cell_ref].s.font = { bold: true };
+                    }
+
+                    // 열 너비 설정
+                    worksheet['!cols'] = [
+                        { wch: 15 }, // 이름
+                        { wch: 15 }, // 구분
+                        { wch: 20 }, // 매트 종류
+                        { wch: 15 }, // 색상
+                        { wch: 10 }, // 수량
+                        { wch: 10 }, // 입출고
+                        { wch: 25 }, // 비고
+                        { wch: 15 }  // 작성시간
+                    ];
+
+                    // 수량에서 '장' 제거
+                    for(let R = 1; R <= range.e.r; ++R) { // 첫 번째 행은 헤더이므로 1부터 시작
+                        // 수량 컬럼 (5번째 컬럼, 인덱스 4)
+                        const cellRefQty = XLSX.utils.encode_cell({c: 4, r: R});
+                        if(worksheet[cellRefQty] && typeof worksheet[cellRefQty].v === 'string') {
+                            const num = parseInt(worksheet[cellRefQty].v.replace('장', '').trim(), 10);
+                            if(!isNaN(num)) {
+                                worksheet[cellRefQty].v = num;
+                                worksheet[cellRefQty].t = 'n'; // 숫자 타입으로 설정
+                            }
+                        }
+                    }
+
+                    // 워크북에 수정된 워크시트 다시 설정
+                    workbook.Sheets["입출고기록"] = worksheet;
+
+                    // 워크북 저장
+                    const date = new Date();
+                    const formattedDate = `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2,'0')}${date.getDate().toString().padStart(2,'0')}`;
+                    const filename = `${formattedDate}_입출고기록.xlsx`;
+                    XLSX.writeFile(workbook, filename);
+                })
+                .catch((error) => {
+                    alert("입출고 기록 내보내기 중 오류 발생: " + error.message);
+                });
+        }
+
+        // 총 수량 계산 함수
+        function calculateTotalQuantity() {
+            const categories = ["정상", "리퍼브", "0.5T"];
+            let grandTotalQuantity = 0;
+            const categoryTotals = {};
+
+            for (let category of categories) {
+                const boxes = parseInt(document.getElementById(`boxes-${category}`).value, 10) || 0;
+                const pieces = parseInt(document.getElementById(`pieces-${category}`).value, 10) || 0;
+                const matType = document.getElementById("mat-name").value;
+                if (!matType) continue; // 매트 종류가 선택되지 않았을 경우
+
+                const boxSize = boxSizes[matType] || 1; // 매트 종류에 따른 박스 크기, 기본값 1
+                const quantity = (boxes * boxSize) + pieces;
+                categoryTotals[category] = quantity;
+                grandTotalQuantity += quantity;
+            }
+
+            // UI 업데이트
+            const categoryTotalDiv = document.getElementById("category-totals");
+
+            // 기존 내용 제거
+            categoryTotalDiv.innerHTML = "";
+
+            // 새로운 카테고리별 총 수량 표시
+            for (let category of categories) {
+                categoryTotalDiv.innerHTML += `<div class="category-total">${category}: ${categoryTotals[category]}장</div>`;
+            }
+            categoryTotalDiv.innerHTML += `<div class="grand-total">총 수량: ${grandTotalQuantity}장</div>`;
+        }
+
+        // 이벤트 리스너 추가 함수
+        function addEventListeners() {
+            const categories = ["정상", "리퍼브", "0.5T"];
+            for (let category of categories) {
+                document.getElementById(`boxes-${category}`).addEventListener("input", calculateTotalQuantity);
+                document.getElementById(`pieces-${category}`).addEventListener("input", calculateTotalQuantity);
+            }
+            document.getElementById("mat-name").addEventListener("change", calculateTotalQuantity);
+            document.getElementById("mat-color").addEventListener("change", calculateTotalQuantity);
+        }
+
+        // 재고 동기화 함수
         function synchronizeStock() {
             if (!isAdmin) {
                 alert("재고 동기화는 관리자만 가능합니다.");
@@ -1060,15 +1297,6 @@
                     document.getElementById("loading-indicator").style.display = "none";
                 });
         }
-
-        // 나머지 스크립트는 이전과 동일합니다.
-
-        // 입력 필드 클릭 시 기본 값 제거
-        function clearValue(element) {
-            element.value = "";
-        }
-
-        // 이벤트 리스너 추가 함수 등 나머지 코드 유지
 
     </script>
 </head>
