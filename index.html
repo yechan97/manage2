@@ -507,10 +507,10 @@
         const boxSizes = {
             "자이언트플러스": 4,
             "자이언트플러스_R": 4,
-            "자이언트플러스_0_5T": 4, // 수정됨: "0.5T" -> "0_5T"
+            "자이언트플러스_0_5T": 4, // "0.5T" -> "0_5T"
             "빅토리매트": 3,
             "빅토리매트_R": 3,
-            "빅토리매트_0_5T": 3  // 수정됨: "0.5T" -> "0_5T"
+            "빅토리매트_0_5T": 3  // "0.5T" -> "0_5T"
         };
 
         const matMapping = {
@@ -523,16 +523,10 @@
         let currentUserName = "";
         let isAdmin = false; // 관리자 권한 여부
 
-        // 차트 객체 초기화 (삭제됨)
-        // let stockChart; // 전역 변수로 선언
-        // let entriesChart; // 전역 변수로 선언
-
         // 매트 이름 표준화 함수
         function normalizeMatFullName(matFullName) {
             // 공백과 마침표를 언더스코어(_)로 대체
             matFullName = matFullName.replace(/[\.\s]+/g, '_');
-            // '0_5T'를 '0.5T'로 변경하지 않음 (Firebase 경로 오류 방지)
-            // matFullName = matFullName.replace(/0_5T/g, "0.5T"); // 제거됨
             return matFullName;
         }
 
@@ -662,6 +656,12 @@
         function getBaseMatName(matFullName) {
             // "_R" 또는 "_0_5T" 접미사를 제거하여 기본 매트 이름을 반환
             return matFullName.replace(/_(R|0_5T)$/, '');
+        }
+
+        function getMatName(category, type) {
+            const suffix = matMapping[category] || "";
+            // 모든 점(.)과 공백을 언더스코어(_)로 대체
+            return normalizeMatFullName(`${type}${suffix}`);
         }
 
         function addEntry(type) {
@@ -820,13 +820,6 @@
             firebase.database().ref('stock').once('value')
                 .then((snapshot) => {
                     const stockEntries = snapshot.val();
-                    const stockData = {
-                        labels: [],
-                        "프렌치바닐라": [],
-                        "솔리드그레이": [],
-                        "베이지코튼": [],
-                        "합계": []
-                    };
 
                     if (stockEntries) {
                         const stockMap = {}; // { matFullName: { color: quantity } }
