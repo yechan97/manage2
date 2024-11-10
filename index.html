@@ -754,17 +754,19 @@
             firebase.database().ref().update(updates)
                 .then(() => {
                     // 재고 업데이트 트랜잭션
-                    const stockUpdates = {};
+                    const stockPromises = [];
                     for (let category of categories) {
                         const { quantity, matFullName, color } = entryData[category];
                         if (quantity === 0) continue;
 
                         const stockPath = `/stock/${matFullName}/${color}`;
-                        stockUpdates[stockPath] = firebase.database().ref(stockPath).transaction(current => {
+                        const stockRef = firebase.database().ref(stockPath);
+                        const promise = stockRef.transaction(current => {
                             return (current || 0) + (type === "입고" ? quantity : -quantity);
                         });
+                        stockPromises.push(promise);
                     }
-                    return Promise.all(Object.values(stockUpdates));
+                    return Promise.all(stockPromises);
                 })
                 .then(() => {
                     // UI 업데이트
@@ -780,8 +782,8 @@
         function resetInputFields() {
             const categories = ["정상", "리퍼브", "0.5T"];
             for (let category of categories) {
-                document.getElementById(`boxes-${category}`).value = "0";
-                document.getElementById(`pieces-${category}`).value = "0";
+                document.getElementById(`boxes-${category}`).value = "";
+                document.getElementById(`pieces-${category}`).value = "";
             }
             document.getElementById("total-quantity").innerText = "0";
             document.getElementById("notes").value = "";
@@ -865,58 +867,58 @@
             stockTableBody.innerHTML = "";
 
             // Firebase의 stock 노드에서 재고 데이터 로드
-            firebase.database().ref('stock').once('value')
-                .then((snapshot) => {
-                    const stockEntries = snapshot.val();
+            firebase.database().ref('stock').on('value', (snapshot) => {
+                const stockEntries = snapshot.val();
 
-                    if (stockEntries) {
-                        const stockMap = {}; // { matFullName: { color: quantity } }
+                if (stockEntries) {
+                    const stockMap = {}; // { matFullName: { color: quantity } }
 
-                        // 모든 매트 이름과 색상에 대해 재고를 집계
-                        for (let matFullName in stockEntries) {
-                            // 매트 이름 표준화
-                            matFullName = normalizeMatFullName(matFullName);
+                    // 모든 매트 이름과 색상에 대해 재고를 집계
+                    for (let matFullName in stockEntries) {
+                        // 매트 이름 표준화
+                        matFullName = normalizeMatFullName(matFullName);
 
-                            if (!stockMap[matFullName]) {
-                                stockMap[matFullName] = { "프렌치바닐라": 0, "솔리드그레이": 0, "베이지코튼": 0 };
-                            }
-                            for (let color in stockEntries[matFullName]) {
-                                const qty = stockEntries[matFullName][color];
-                                if (stockMap[matFullName][color] !== undefined) {
-                                    stockMap[matFullName][color] += qty;
-                                } else {
-                                    stockMap[matFullName][color] = qty;
-                                }
+                        if (!stockMap[matFullName]) {
+                            stockMap[matFullName] = { "프렌치바닐라": 0, "솔리드그레이": 0, "베이지코튼": 0 };
+                        }
+                        for (let color in stockEntries[matFullName]) {
+                            const qty = stockEntries[matFullName][color];
+                            if (stockMap[matFullName][color] !== undefined) {
+                                stockMap[matFullName][color] += qty;
+                            } else {
+                                stockMap[matFullName][color] = qty;
                             }
                         }
-
-                        const matTypes = Object.keys(stockMap);
-                        matTypes.forEach(mat => {
-                            const colors = stockMap[mat];
-                            let row = document.createElement("tr");
-                            row.innerHTML = `<td>${mat.replace(/_/g, ' ')}</td>`;
-                            let total = 0;
-                            ["프렌치바닐라", "솔리드그레이", "베이지코튼"].forEach(color => {
-                                const qty = colors[color] || 0;
-                                row.innerHTML += `<td>${qty}장</td>`;
-                                total += qty;
-                            });
-                            row.innerHTML += `<td class="total-cell">${total}장</td>`;
-                            stockTableBody.appendChild(row);
-                        });
-                    } else {
-                        // 재고 데이터가 없을 때 기본 값 표시
-                        const matTypes = ["자이언트플러스", "빅토리매트"];
-                        matTypes.forEach(mat => {
-                            const row = document.createElement("tr");
-                            row.innerHTML = `<td>${mat.replace(/_/g, ' ')}</td><td>0장</td><td>0장</td><td>0장</td><td class="total-cell">0장</td>`;
-                            stockTableBody.appendChild(row);
-                        });
                     }
-                })
-                .catch((error) => {
-                    alert("재고 데이터 로드 중 오류 발생: " + error.message);
-                });
+
+                    const matTypes = Object.keys(stockMap);
+                    stockTableBody.innerHTML = ""; // Clear existing rows
+                    matTypes.forEach(mat => {
+                        const colors = stockMap[mat];
+                        let row = document.createElement("tr");
+                        row.innerHTML = `<td>${mat.replace(/_/g, ' ')}</td>`;
+                        let total = 0;
+                        ["프렌치바닐라", "솔리드그레이", "베이지코튼"].forEach(color => {
+                            const qty = colors[color] || 0;
+                            row.innerHTML += `<td>${qty}장</td>`;
+                            total += qty;
+                        });
+                        row.innerHTML += `<td class="total-cell">${total}장</td>`;
+                        stockTableBody.appendChild(row);
+                    });
+                } else {
+                    // 재고 데이터가 없을 때 기본 값 표시
+                    const matTypes = ["자이언트플러스", "빅토리매트"];
+                    stockTableBody.innerHTML = ""; // Clear existing rows
+                    matTypes.forEach(mat => {
+                        const row = document.createElement("tr");
+                        row.innerHTML = `<td>${mat.replace(/_/g, ' ')}</td><td>0장</td><td>0장</td><td>0장</td><td class="total-cell">0장</td>`;
+                        stockTableBody.appendChild(row);
+                    });
+                }
+            }, (error) => {
+                alert("재고 데이터 로드 중 오류 발생: " + error.message);
+            });
 
             // 입출고 기록 테이블 로드
             loadEntryRecords();
@@ -927,8 +929,8 @@
             recordsTableBody.innerHTML = "";
 
             firebase.database().ref('entries')
-                .once('value')
-                .then((snapshot) => {
+                .on('value', (snapshot) => {
+                    recordsTableBody.innerHTML = "";
                     const adminEntries = snapshot.val();
                     if (adminEntries) {
                         const entriesArray = Object.values(adminEntries);
@@ -953,8 +955,7 @@
                     } else {
                         recordsTableBody.innerHTML = "<tr><td colspan='8'>입출고 기록이 없습니다.</td></tr>";
                     }
-                })
-                .catch((error) => {
+                }, (error) => {
                     alert("입출고 기록 로드 중 오류 발생: " + error.message);
                 });
         }
@@ -1322,18 +1323,18 @@
                     <!-- 각 구분에 대한 입력 필드 -->
                     <div class="category-entry">
                         <label for="boxes-정상">정상:</label>
-                        <input type="number" id="boxes-정상" min="0" value="0" onfocus="clearValue(this)">
-                        <input type="number" id="pieces-정상" min="0" value="0" onfocus="clearValue(this)" placeholder="장수">
+                        <input type="number" id="boxes-정상" min="0" placeholder="박스" onfocus="clearValue(this)">
+                        <input type="number" id="pieces-정상" min="0" placeholder="낱장" onfocus="clearValue(this)">
                     </div>
                     <div class="category-entry">
                         <label for="boxes-리퍼브">리퍼브:</label>
-                        <input type="number" id="boxes-리퍼브" min="0" value="0" onfocus="clearValue(this)">
-                        <input type="number" id="pieces-리퍼브" min="0" value="0" onfocus="clearValue(this)" placeholder="장수">
+                        <input type="number" id="boxes-리퍼브" min="0" placeholder="박스" onfocus="clearValue(this)">
+                        <input type="number" id="pieces-리퍼브" min="0" placeholder="낱장" onfocus="clearValue(this)">
                     </div>
                     <div class="category-entry">
                         <label for="boxes-0.5T">0.5T:</label>
-                        <input type="number" id="boxes-0.5T" min="0" value="0" onfocus="clearValue(this)">
-                        <input type="number" id="pieces-0.5T" min="0" value="0" onfocus="clearValue(this)" placeholder="장수">
+                        <input type="number" id="boxes-0.5T" min="0" placeholder="박스" onfocus="clearValue(this)">
+                        <input type="number" id="pieces-0.5T" min="0" placeholder="낱장" onfocus="clearValue(this)">
                     </div>
                 </div>
 
@@ -1426,8 +1427,11 @@
         <script>
             // 입력 필드 클릭 시 기본 값 0 제거
             function clearValue(element) {
-                if (element.value === "0") {
-                    element.value = "";
+                if (element.placeholder === "박스" && element.value === "") {
+                    element.placeholder = "박스";
+                }
+                if (element.placeholder === "낱장" && element.value === "") {
+                    element.placeholder = "낱장";
                 }
             }
         </script>
