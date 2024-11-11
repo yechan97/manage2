@@ -694,7 +694,9 @@
         function getMatName(category, type) {
             const suffix = matMapping[category] || "";
             const matName = `${type}${suffix}`;
-            return normalizeMatFullName(matName);
+            const normalizedMatName = normalizeMatFullName(matName);
+            console.log(`Generated matFullName: ${normalizedMatName} for category: ${category}, type: ${type}`);
+            return normalizedMatName;
         }
 
         async function addEntry(type) {
@@ -737,6 +739,8 @@
                 categoryTotals[category] = quantity;
                 grandTotalQuantity += quantity;
             }
+
+            console.log(`Grand Total Quantity: ${grandTotalQuantity}`);
 
             // 총 수량이 0보다 커야 함
             if (grandTotalQuantity <= 0) {
@@ -781,8 +785,7 @@
                 await firebase.database().ref().update(updates);
                 console.log("Entries updated successfully:", updates);
 
-                // 재고 업데이트 트랜잭션
-                const stockUpdatePromises = [];
+                // 재고 업데이트 트랜잭션 - 순차적으로 처리
                 for (let category of categories) {
                     const { quantity, matFullName, color } = entryData[category];
                     if (quantity === 0) continue;
@@ -797,7 +800,7 @@
 
                     console.log('Updating stock for:', matFullName, color, 'with delta:', delta);
 
-                    const promise = stockRef.transaction((currentQty) => {
+                    await stockRef.transaction((currentQty) => {
                         return (currentQty || 0) + delta;
                     }, (error, committed, snapshot) => {
                         if (error) {
@@ -809,10 +812,8 @@
                             console.log('New quantity:', snapshot.val());
                         }
                     });
-                    stockUpdatePromises.push(promise);
                 }
 
-                await Promise.all(stockUpdatePromises);
                 console.log("Stock updated successfully via transactions.");
 
                 // UI 업데이트
@@ -1315,6 +1316,8 @@
                             stockMap[matName][color] -= quantity;
                         }
                     });
+
+                    console.log("Synchronized Stock Map:", stockMap);
 
                     // Firebase의 stock 노드를 업데이트
                     await firebase.database().ref('stock').set(stockMap);
