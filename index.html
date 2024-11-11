@@ -702,7 +702,7 @@
         // 동기화 함수: 새로운 동기화되지 않은 엔트리를 처리
         async function synchronizeNewEntries() {
             console.log("Starting synchronization of new entries...");
-            const unsyncedEntriesRef = database.ref('entries').orderByChild('synchronized').equalTo(false);
+            const unsyncedEntriesRef = firebase.database().ref('entries').orderByChild('synchronized').equalTo(false);
             const snapshot = await unsyncedEntriesRef.once('value');
             const unsyncedEntries = snapshot.val();
 
@@ -711,11 +711,9 @@
                 return;
             }
 
+            console.log(`Found ${Object.keys(unsyncedEntries).length} unsynchronized entries.`);
             const entriesArray = Object.entries(unsyncedEntries);
-            console.log(`Found ${entriesArray.length} unsynchronized entries.`);
 
-            // 배치 업데이트 준비
-            const updates = {};
             for (let [entryKey, entry] of entriesArray) {
                 const { quantity, matFullName, color, type } = entry;
 
@@ -729,28 +727,34 @@
                     continue;
                 }
 
+                const stockRef = firebase.database().ref(`/stock/${matFullName}/${color}`);
                 const delta = type === "입고" ? quantity : -quantity;
-                const stockPath = `/stock/${matFullName}/${color}`;
-                const entryPath = `/entries/${entryKey}/synchronized`;
 
-                // 재고 업데이트 트랜잭션을 위한 병합된 업데이트
-                updates[stockPath] = (firebase.database.ServerValue.increment(delta));
-                updates[entryPath] = true; // 동기화 완료 표시
-            }
+                console.log(`Synchronizing entry ${entryKey}: ${type} ${quantity}장 of ${matFullName} (${color})`);
 
-            try {
-                if (Object.keys(updates).length === 0) {
-                    console.log("No valid entries to synchronize.");
-                    return;
+                try {
+                    // 재고 업데이트 트랜잭션
+                    await stockRef.transaction((currentQty) => {
+                        return (currentQty || 0) + delta;
+                    }, (error, committed, snapshot) => {
+                        if (error) {
+                            console.error(`Transaction failed for entry ${entryKey}:`, error);
+                        } else if (!committed) {
+                            console.log(`Transaction aborted for entry ${entryKey}.`);
+                        } else {
+                            console.log(`Transaction committed for entry ${entryKey}. New quantity: ${snapshot.val()}`);
+                        }
+                    });
+
+                    // 동기화 플래그 업데이트
+                    await firebase.database().ref(`entries/${entryKey}`).update({ synchronized: true });
+                    console.log(`Entry ${entryKey} marked as synchronized.`);
+                } catch (error) {
+                    console.error(`Error synchronizing entry ${entryKey}:`, error);
                 }
-
-                // 병합 업데이트 수행
-                await database.ref().update(updates);
-                console.log("Synchronization completed successfully.");
-            } catch (error) {
-                console.error("Error during synchronization:", error);
-                alert("동기화 중 오류가 발생했습니다. 콘솔을 확인해주세요.");
             }
+
+            console.log("Synchronization of new entries completed.");
         }
 
         async function addEntry(type) {
@@ -771,6 +775,7 @@
             const entryData = {};
 
             let grandTotalQuantity = 0;
+            const categoryTotals = {};
 
             for (let category of categories) {
                 const boxInput = parseInt(document.getElementById(`boxes-${category}`).value, 10) || 0;
@@ -782,16 +787,16 @@
                 const boxSize = boxSizes[matFullName] || 1; // 매트 종류에 따른 박스 크기, 기본값 1
                 const quantity = (boxInput * boxSize) + pieceInput;
 
-                if (quantity > 0) {
-                    entryData[category] = {
-                        boxes: boxInput,
-                        pieces: pieceInput,
-                        quantity: quantity,
-                        matFullName: matFullName,
-                        synchronized: false // Mark as unsynchronized
-                    };
-                    grandTotalQuantity += quantity;
-                }
+                entryData[category] = {
+                    boxes: boxInput,
+                    pieces: pieceInput,
+                    quantity: quantity,
+                    matFullName: matFullName,
+                    synchronized: false // Mark as unsynchronized
+                };
+
+                categoryTotals[category] = quantity;
+                grandTotalQuantity += quantity;
             }
 
             console.log(`Grand Total Quantity: ${grandTotalQuantity}`);
@@ -809,12 +814,14 @@
             }
 
             // Firebase에 여러 구분에 대한 엔트리 추가
-            const entriesRef = database.ref('entries');
+            const entriesRef = firebase.database().ref('entries');
             const updates = {};
             const timestamp = Date.now();
 
-            for (let category in entryData) {
+            for (let category of categories) {
                 const { boxes, pieces, quantity, matFullName } = entryData[category];
+                if (boxes === 0 && pieces === 0) continue; // 입력이 없으면 건너뜀
+
                 const entry = { 
                     name: currentUserName, 
                     category: category, 
@@ -830,12 +837,12 @@
                 };
 
                 const newEntryKey = entriesRef.push().key;
-                updates[`/entries/${newEntryKey}`] = entry;
+                updates['/entries/' + newEntryKey] = entry;
             }
 
             try {
                 // 엔트리 업데이트
-                await database.ref().update(updates);
+                await firebase.database().ref().update(updates);
                 console.log("Entries updated successfully:", updates);
 
                 // UI 업데이트
@@ -865,7 +872,7 @@
             const recentContainer = document.getElementById("recent-entries");
             recentContainer.innerHTML = "";
 
-            database.ref('entries').orderByChild('timestamp').limitToLast(10)
+            firebase.database().ref('entries').orderByChild('timestamp').limitToLast(10)
                 .on('value', (snapshot) => {
                     recentContainer.innerHTML = "";
                     const entries = snapshot.val();
@@ -897,7 +904,7 @@
             setTimeout(async () => {
                 // 일일 초기화 시 입출고 기록만 초기화 (재고는 초기화하지 않음)
                 try {
-                    await database.ref('entries').remove();
+                    await firebase.database().ref('entries').remove();
                     alert("입출고 내역이 초기화되었습니다.");
                 } catch (error) {
                     alert("데이터 초기화 중 오류 발생: " + error.message);
@@ -927,7 +934,7 @@
             const stockTableBody = document.getElementById("stock-table-body");
             stockTableBody.innerHTML = "";
 
-            database.ref('stock').on('value', (snapshot) => {
+            firebase.database().ref('stock').on('value', (snapshot) => {
                 const stockEntries = snapshot.val();
                 console.log("Stock Entries Loaded:", stockEntries);
 
@@ -984,7 +991,7 @@
             const recordsTableBody = document.getElementById("admin-table-body");
             recordsTableBody.innerHTML = "";
 
-            database.ref('entries')
+            firebase.database().ref('entries')
                 .on('value', (snapshot) => {
                     recordsTableBody.innerHTML = "";
                     const adminEntries = snapshot.val();
@@ -1028,7 +1035,7 @@
                 setTimeout(async () => {
                     try {
                         // Realtime Database의 'entries' 노드 삭제
-                        await database.ref('entries').remove();
+                        await firebase.database().ref('entries').remove();
                         alert("입출고 기록이 초기화되었습니다.");
                     } catch (error) {
                         alert("입출고 기록 초기화 중 오류 발생: " + error.message);
@@ -1050,7 +1057,7 @@
                 setTimeout(async () => {
                     try {
                         // Realtime Database의 'stock' 노드 삭제
-                        await database.ref('stock').remove();
+                        await firebase.database().ref('stock').remove();
                         alert("재고 내역이 초기화되었습니다.");
                     } catch (error) {
                         alert("재고 내역 초기화 중 오류 발생: " + error.message);
@@ -1146,7 +1153,7 @@
         // 엑셀 저장 함수: 입출고 기록
         function exportRecords() {
             // 먼저 데이터를 새 배열로 복사하고, 오름차순으로 정렬
-            database.ref('entries').once('value')
+            firebase.database().ref('entries').once('value')
                 .then((snapshot) => {
                     const adminEntries = snapshot.val();
                     let entriesArray = [];
@@ -1313,18 +1320,20 @@
             // 로딩 인디케이터 표시
             document.getElementById("loading-indicator").style.display = "flex";
 
-            try {
-                // 새로운 동기화되지 않은 엔트리 동기화
-                await synchronizeNewEntries();
-                alert("재고가 성공적으로 동기화되었습니다.");
-                loadAdminData();
-            } catch (error) {
-                alert("재고 동기화 중 오류 발생: " + error.message);
-                console.error("Error synchronizing stock:", error);
-            } finally {
-                // 로딩 인디케이터 숨기기
-                document.getElementById("loading-indicator").style.display = "none";
-            }
+            setTimeout(async () => {
+                try {
+                    // 새로운 동기화되지 않은 엔트리 동기화
+                    await synchronizeNewEntries();
+                    alert("재고가 성공적으로 동기화되었습니다.");
+                    loadAdminData();
+                } catch (error) {
+                    alert("재고 동기화 중 오류 발생: " + error.message);
+                    console.error("Error synchronizing stock:", error);
+                } finally {
+                    // 로딩 인디케이터 숨기기
+                    document.getElementById("loading-indicator").style.display = "none";
+                }
+            }, 0);
         }
 
         // 입력 필드 클릭 시 기본 값 제거
