@@ -560,8 +560,8 @@
 
         // 매트 이름 표준화 함수
         function normalizeMatFullName(matFullName) {
-            // 공백 및 특수문자 제거 (필요 시 추가적인 정규식 적용 가능)
-            return matFullName.replace(/\s+/g, '_').replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
+            // 공백 및 특수문자 제거 (Firebase 키에 불가능한 문자 제거)
+            return matFullName.replace(/\s+/g, '_').replace(/[.#$[\]/]/g,"");
         }
 
         document.addEventListener("DOMContentLoaded", () => {
@@ -665,7 +665,7 @@
         function initializeMainSection() {
             displayRecentEntries();
             loadAdminData();
-            resetEntriesDaily(); // 함수 이름 변경 및 일일 초기화 (재고는 초기화하지 않음)
+            resetEntriesDaily(); // 일일 초기화 (재고는 초기화하지 않음)
             calculateTotalQuantity(); // 초기 총 수량 계산
             addEventListeners(); // 이벤트 리스너 추가
         }
@@ -771,30 +771,20 @@
                 await firebase.database().ref().update(updates);
                 console.log("Entries updated successfully:", updates);
 
-                // 재고 업데이트 트랜잭션
-                const stockPromises = [];
+                // 재고 업데이트 트랜잭션 최적화
+                const stockUpdates = {};
                 for (let category of categories) {
                     const { quantity, matFullName, color } = entryData[category];
                     if (quantity === 0) continue;
 
                     const stockPath = `/stock/${matFullName}/${color}`;
-                    console.log(`Updating stock at ${stockPath} by ${type === "입고" ? quantity : -quantity}`);
-                    const stockRef = firebase.database().ref(stockPath);
-                    const promise = stockRef.transaction(current => {
-                        return (current || 0) + (type === "입고" ? quantity : -quantity);
-                    }, (error, committed, snapshot) => {
-                        if (error) {
-                            console.error(`Transaction failed for ${stockPath}:`, error);
-                        } else if (!committed) {
-                            console.warn(`Transaction not committed for ${stockPath}`);
-                        } else {
-                            console.log(`Transaction committed for ${stockPath}:`, snapshot.val());
-                        }
-                    });
-                    stockPromises.push(promise);
+                    const delta = type === "입고" ? quantity : -quantity;
+                    stockUpdates[stockPath] = firebase.database.ServerValue.increment(delta);
                 }
-                await Promise.all(stockPromises);
-                console.log("Stock updated successfully.");
+
+                // 한 번에 재고 업데이트
+                await firebase.database().ref().update(stockUpdates);
+                console.log("Stock updated successfully:", stockUpdates);
 
                 // UI 업데이트
                 resetInputFields();
@@ -1238,7 +1228,7 @@
         }
 
         // 재고 동기화 함수
-        function synchronizeStock() {
+        async function synchronizeStock() {
             if (!isAdmin) {
                 alert("재고 동기화는 관리자만 가능합니다.");
                 return;
@@ -1251,56 +1241,52 @@
             // 로딩 인디케이터 표시
             document.getElementById("loading-indicator").style.display = "flex";
 
-            firebase.database().ref('entries').once('value')
-                .then((snapshot) => {
-                    const entries = snapshot.val();
-                    if (!entries) {
-                        alert("입출고 기록이 없습니다. 동기화를 진행할 수 없습니다.");
-                        throw new Error("No entries to synchronize.");
+            try {
+                const snapshot = await firebase.database().ref('entries').once('value');
+                const entries = snapshot.val();
+                if (!entries) {
+                    alert("입출고 기록이 없습니다. 동기화를 진행할 수 없습니다.");
+                    throw new Error("No entries to synchronize.");
+                }
+
+                const stockMap = {};
+
+                // 모든 입출고 기록을 순회하여 재고 계산
+                Object.values(entries).forEach(entry => {
+                    let { matName, color, quantity, type } = entry;
+
+                    if (!stockMap[matName]) {
+                        stockMap[matName] = {};
+                    }
+                    if (!stockMap[matName][color]) {
+                        stockMap[matName][color] = 0;
                     }
 
-                    const stockMap = {};
-
-                    // 모든 입출고 기록을 순회하여 재고 계산
-                    Object.values(entries).forEach(entry => {
-                        let { matName, color, quantity, type } = entry;
-
-                        if (!stockMap[matName]) {
-                            stockMap[matName] = {};
-                        }
-                        if (!stockMap[matName][color]) {
-                            stockMap[matName][color] = 0;
-                        }
-
-                        if (type === "입고") {
-                            stockMap[matName][color] += quantity;
-                        } else if (type === "출고") {
-                            stockMap[matName][color] -= quantity;
-                        }
-                    });
-
-                    // Firebase의 stock 노드를 업데이트
-                    const updates = {};
-                    for (const mat in stockMap) {
-                        for (const color in stockMap[mat]) {
-                            updates[`/stock/${mat}/${color}`] = stockMap[mat][color];
-                        }
+                    if (type === "입고") {
+                        stockMap[matName][color] += quantity;
+                    } else if (type === "출고") {
+                        stockMap[matName][color] -= quantity;
                     }
-
-                    return firebase.database().ref().update(updates);
-                })
-                .then(() => {
-                    alert("재고가 성공적으로 동기화되었습니다.");
-                    loadAdminData();
-                })
-                .catch((error) => {
-                    alert("재고 동기화 중 오류 발생: " + error.message);
-                    console.error("Error synchronizing stock:", error);
-                })
-                .finally(() => {
-                    // 로딩 인디케이터 숨기기
-                    document.getElementById("loading-indicator").style.display = "none";
                 });
+
+                // Firebase의 stock 노드를 업데이트
+                const updates = {};
+                for (const mat in stockMap) {
+                    for (const color in stockMap[mat]) {
+                        updates[`/stock/${mat}/${color}`] = stockMap[mat][color];
+                    }
+                }
+
+                await firebase.database().ref().update(updates);
+                alert("재고가 성공적으로 동기화되었습니다.");
+                loadAdminData();
+            } catch (error) {
+                alert("재고 동기화 중 오류 발생: " + error.message);
+                console.error("Error synchronizing stock:", error);
+            } finally {
+                // 로딩 인디케이터 숨기기
+                document.getElementById("loading-indicator").style.display = "none";
+            }
         }
 
         // 입력 필드 클릭 시 기본 값 제거
@@ -1472,6 +1458,5 @@
         <div id="loading-indicator">
             <p>처리 중입니다...</p>
         </div>
-    </div>
-</body>
+    </body>
 </html>
