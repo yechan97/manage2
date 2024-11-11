@@ -701,6 +701,7 @@
 
         // 동기화 함수: 새로운 동기화되지 않은 엔트리를 처리
         async function synchronizeNewEntries() {
+            console.log("Starting synchronization of new entries...");
             const unsyncedEntriesRef = firebase.database().ref('entries').orderByChild('synchronized').equalTo(false);
             const snapshot = await unsyncedEntriesRef.once('value');
             const unsyncedEntries = snapshot.val();
@@ -710,37 +711,50 @@
                 return;
             }
 
-            console.log("Synchronizing new entries:", unsyncedEntries);
+            console.log(`Found ${Object.keys(unsyncedEntries).length} unsynchronized entries.`);
+            const entriesArray = Object.entries(unsyncedEntries);
 
-            const categories = Object.values(MAT_CATEGORIES);
-
-            for (let entryKey in unsyncedEntries) {
-                const entry = unsyncedEntries[entryKey];
+            for (let [entryKey, entry] of entriesArray) {
                 const { quantity, matFullName, color, type } = entry;
 
-                if (quantity === 0) continue;
+                if (quantity === 0) {
+                    console.log(`Entry ${entryKey} has zero quantity. Skipping.`);
+                    continue;
+                }
 
                 if (!matFullName || !color) {
-                    console.error(`matFullName 또는 color가 정의되지 않았습니다. matFullName: ${matFullName}, color: ${color}`);
+                    console.error(`Entry ${entryKey} is missing matFullName or color. Skipping.`);
                     continue;
                 }
 
                 const stockRef = firebase.database().ref(`/stock/${matFullName}/${color}`);
                 const delta = type === "입고" ? quantity : -quantity;
 
-                console.log('Synchronizing stock for:', matFullName, color, 'with delta:', delta);
+                console.log(`Synchronizing entry ${entryKey}: ${type} ${quantity}장 of ${matFullName} (${color})`);
 
                 try {
+                    // 재고 업데이트 트랜잭션
                     await stockRef.transaction((currentQty) => {
                         return (currentQty || 0) + delta;
+                    }, (error, committed, snapshot) => {
+                        if (error) {
+                            console.error(`Transaction failed for entry ${entryKey}:`, error);
+                        } else if (!committed) {
+                            console.log(`Transaction aborted for entry ${entryKey}.`);
+                        } else {
+                            console.log(`Transaction committed for entry ${entryKey}. New quantity: ${snapshot.val()}`);
+                        }
                     });
-                    console.log(`Stock synchronized successfully for entry: ${entryKey}`);
-                    // Mark the entry as synchronized
+
+                    // 동기화 플래그 업데이트
                     await firebase.database().ref(`entries/${entryKey}`).update({ synchronized: true });
+                    console.log(`Entry ${entryKey} marked as synchronized.`);
                 } catch (error) {
-                    console.error(`Error synchronizing entry: ${entryKey}`, error);
+                    console.error(`Error synchronizing entry ${entryKey}:`, error);
                 }
             }
+
+            console.log("Synchronization of new entries completed.");
         }
 
         async function addEntry(type) {
@@ -1308,37 +1322,8 @@
 
             setTimeout(async () => {
                 try {
-                    const snapshot = await firebase.database().ref('entries').once('value');
-                    const entries = snapshot.val();
-                    if (!entries) {
-                        alert("입출고 기록이 없습니다. 동기화를 진행할 수 없습니다.");
-                        throw new Error("No entries to synchronize.");
-                    }
-
-                    const stockMap = {};
-
-                    // 모든 입출고 기록을 순회하여 재고 계산
-                    Object.values(entries).forEach(entry => {
-                        let { matName, color, quantity, type } = entry;
-
-                        if (!stockMap[matName]) {
-                            stockMap[matName] = {};
-                        }
-                        if (!stockMap[matName][color]) {
-                            stockMap[matName][color] = 0;
-                        }
-
-                        if (type === "입고") {
-                            stockMap[matName][color] += quantity;
-                        } else if (type === "출고") {
-                            stockMap[matName][color] -= quantity;
-                        }
-                    });
-
-                    console.log("Synchronized Stock Map:", stockMap);
-
-                    // Firebase의 stock 노드를 업데이트
-                    await firebase.database().ref('stock').set(stockMap);
+                    // 새로운 동기화되지 않은 엔트리 동기화
+                    await synchronizeNewEntries();
                     alert("재고가 성공적으로 동기화되었습니다.");
                     loadAdminData();
                 } catch (error) {
