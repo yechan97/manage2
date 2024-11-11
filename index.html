@@ -120,6 +120,7 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
+            flex-wrap: wrap;
         }
         .nav-buttons {
             display: flex;
@@ -154,6 +155,7 @@
             font-size: 16px;
             font-weight: bold;
             transition: background-color 0.3s ease;
+            margin-top: 10px;
         }
         .logout-button:hover {
             background-color: #e53935;
@@ -602,6 +604,8 @@
             const password = document.getElementById("login-password").value.trim();
             const autoLogin = document.getElementById("auto-login").checked;
 
+            console.log(`Attempting login with name: ${name}, password: ${password}`);
+
             if (name === "") {
                 displayLoginError("이름을 입력해주세요.");
                 return;
@@ -697,6 +701,9 @@
             const matType = document.getElementById("mat-name").value;
             const color = document.getElementById("mat-color").value;
 
+            console.log(`Adding entry of type: ${type}`);
+            console.log(`matType: ${matType}, color: ${color}`);
+
             // 매트 종류 및 색상 선택 확인
             if (!matType || !color) {
                 alert("매트 종류와 색상을 선택해주세요.");
@@ -757,7 +764,7 @@
                     category: category, 
                     matName: matFullName, 
                     color, 
-                    quantity: quantity, 
+                    quantity: quantity,
                     type, 
                     notes: document.getElementById("notes").value.trim(),
                     timestamp: timestamp,
