@@ -500,8 +500,8 @@
         }
     </style>
     <script>
-        // Firebase 설정 객체
-        const firebaseConfig = {        
+        // Firebase 설정 객체       
+        const firebaseConfig = {
           apiKey: "AIzaSyC6Mwjy94nr1zf4xPMWU8EqB__9cRZiMcs", // 실제 Firebase 프로젝트의 API 키로 교체해주세요.
           authDomain: "manage-dee73.firebaseapp.com",
           databaseURL: "https://manage-dee73-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -510,7 +510,6 @@
           messagingSenderId: "519840861970",
           appId: "1:519840861970:web:4e7dfc39cb112e8c8badcb"
         };
-
         // Firebase 초기화
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
@@ -561,7 +560,7 @@
         // 매트 이름 표준화 함수
         function normalizeMatFullName(matFullName) {
             // 공백 및 특수문자 제거 (Firebase 키에 불가능한 문자 제거)
-            return matFullName.replace(/\s+/g, '_').replace(/[.#$[\]/]/g,"");
+            return matFullName.replace(/\s+/g, '').replace(/[.#$[\]/]/g,"");
         }
 
         document.addEventListener("DOMContentLoaded", () => {
@@ -824,7 +823,7 @@
                         let entriesHTML = "";
                         entriesArray.forEach(entry => {
                             const formattedTime = formatTimestamp(entry.timestamp);
-                            entriesHTML += `<div class="entry">${entry.name} | ${entry.category} | ${entry.matName.replace(/_/g, ' ')} | ${entry.color} | ${entry.quantity}장 (${entry.type}) | ${entry.notes} | <span>${formattedTime}</span></div>`;
+                            entriesHTML += `<div class="entry">${entry.name} | ${entry.category} | ${entry.matName} | ${entry.color} | ${entry.quantity}장 (${entry.type}) | ${entry.notes} | <span>${formattedTime}</span></div>`;
                         });
                         recentContainer.innerHTML = entriesHTML;
                     } else {
@@ -899,7 +898,7 @@
                     matTypes.forEach(mat => {
                         const colors = stockMap[mat];
                         let total = 0;
-                        let row = `<tr><td>${mat.replace(/_/g, ' ')}</td>`;
+                        let row = `<tr><td>${mat}</td>`;
                         ["프렌치바닐라", "솔리드그레이", "베이지코튼"].forEach(color => {
                             const qty = colors[color] || 0;
                             row += `<td>${qty}장</td>`;
@@ -915,7 +914,7 @@
                     const matTypes = ["자이언트플러스", "빅토리매트"];
                     let rowsHTML = "";
                     matTypes.forEach(mat => {
-                        rowsHTML += `<tr><td>${mat.replace(/_/g, ' ')}</td><td>0장</td><td>0장</td><td>0장</td><td class="total-cell">0장</td></tr>`;
+                        rowsHTML += `<tr><td>${mat}</td><td>0장</td><td>0장</td><td>0장</td><td class="total-cell">0장</td></tr>`;
                     });
                     stockTableBody.innerHTML = rowsHTML;
                 }
@@ -947,7 +946,7 @@
                                 <tr>
                                     <td>${entry.name}</td>
                                     <td>${entry.category}</td>
-                                    <td>${entry.matName.replace(/_/g, ' ')}</td>
+                                    <td>${entry.matName}</td>
                                     <td>${entry.color}</td>
                                     <td>${entry.quantity}장</td>
                                     <td>${entry.type}</td>
@@ -1120,7 +1119,7 @@
                             <tr>
                                 <td>${entry.name}</td>
                                 <td>${entry.category}</td>
-                                <td>${entry.matName.replace(/_/g, ' ')}</td>
+                                <td>${entry.matName}</td>
                                 <td>${entry.color}</td>
                                 <td>${entry.quantity}장</td>
                                 <td>${entry.type}</td>
