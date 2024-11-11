@@ -501,7 +501,7 @@
     </style>
     <script>
         // Firebase 설정 객체
-        const firebaseConfig = {
+        const firebaseConfig = {        
           apiKey: "AIzaSyC6Mwjy94nr1zf4xPMWU8EqB__9cRZiMcs", // 실제 Firebase 프로젝트의 API 키로 교체해주세요.
           authDomain: "manage-dee73.firebaseapp.com",
           databaseURL: "https://manage-dee73-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -510,7 +510,7 @@
           messagingSenderId: "519840861970",
           appId: "1:519840861970:web:4e7dfc39cb112e8c8badcb"
         };
-        
+
         // Firebase 초기화
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
@@ -771,20 +771,23 @@
                 await firebase.database().ref().update(updates);
                 console.log("Entries updated successfully:", updates);
 
-                // 재고 업데이트 트랜잭션 최적화
-                const stockUpdates = {};
+                // 재고 업데이트 트랜잭션
+                const stockUpdatePromises = [];
                 for (let category of categories) {
                     const { quantity, matFullName, color } = entryData[category];
                     if (quantity === 0) continue;
 
-                    const stockPath = `/stock/${matFullName}/${color}`;
+                    const stockRef = firebase.database().ref(`/stock/${matFullName}/${color}`);
                     const delta = type === "입고" ? quantity : -quantity;
-                    stockUpdates[stockPath] = firebase.database.ServerValue.increment(delta);
+
+                    const promise = stockRef.transaction((currentQty) => {
+                        return (currentQty || 0) + delta;
+                    });
+                    stockUpdatePromises.push(promise);
                 }
 
-                // 한 번에 재고 업데이트
-                await firebase.database().ref().update(stockUpdates);
-                console.log("Stock updated successfully:", stockUpdates);
+                await Promise.all(stockUpdatePromises);
+                console.log("Stock updated successfully via transactions.");
 
                 // UI 업데이트
                 resetInputFields();
@@ -1458,5 +1461,6 @@
         <div id="loading-indicator">
             <p>처리 중입니다...</p>
         </div>
-    </body>
+    </div>
+</body>
 </html>
