@@ -502,7 +502,7 @@
         }
     </style>
     <script>
-        // Firebase 설정 객체
+        // Firebase 설정 객체 (실제 값을 대체 텍스트로 표시)
         const firebaseConfig = {
           apiKey: "AIzaSyC6Mwjy94nr1zf4xPMWU8EqB__9cRZiMcs", // 실제 Firebase 프로젝트의 API 키로 교체해주세요.
           authDomain: "manage-dee73.firebaseapp.com",
@@ -715,7 +715,8 @@
             const entriesArray = Object.entries(unsyncedEntries);
 
             for (let [entryKey, entry] of entriesArray) {
-                const { quantity, matFullName, color, type } = entry;
+                const { quantity, matName, color, type } = entry;
+                const matFullName = matName; // matFullName에 matName 값을 할당
 
                 if (quantity === 0) {
                     console.log(`Entry ${entryKey} has zero quantity. Skipping.`);
@@ -734,17 +735,15 @@
 
                 try {
                     // 재고 업데이트 트랜잭션
-                    await stockRef.transaction((currentQty) => {
+                    const result = await stockRef.transaction((currentQty) => {
                         return (currentQty || 0) + delta;
-                    }, (error, committed, snapshot) => {
-                        if (error) {
-                            console.error(`Transaction failed for entry ${entryKey}:`, error);
-                        } else if (!committed) {
-                            console.log(`Transaction aborted for entry ${entryKey}.`);
-                        } else {
-                            console.log(`Transaction committed for entry ${entryKey}. New quantity: ${snapshot.val()}`);
-                        }
                     });
+
+                    if (result.committed) {
+                        console.log(`Transaction committed for entry ${entryKey}. New quantity: ${result.snapshot.val()}`);
+                    } else {
+                        console.log(`Transaction aborted for entry ${entryKey}.`);
+                    }
 
                     // 동기화 플래그 업데이트
                     await firebase.database().ref(`entries/${entryKey}`).update({ synchronized: true });
@@ -825,7 +824,7 @@
                 const entry = { 
                     name: currentUserName, 
                     category: category, 
-                    matName: matFullName, 
+                    matName: matFullName, // matName에 matFullName 저장
                     color, 
                     quantity: quantity,
                     type, 
@@ -1505,5 +1504,6 @@
         <div id="loading-indicator">
             <p>처리 중입니다...</p>
         </div>
-    </body>
+    </div>
+</body>
 </html>
