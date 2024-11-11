@@ -500,7 +500,7 @@
         }
     </style>
     <script>
-        // Firebase 설정 객체       
+        // Firebase 설정 객체
         const firebaseConfig = {
           apiKey: "AIzaSyC6Mwjy94nr1zf4xPMWU8EqB__9cRZiMcs", // 실제 Firebase 프로젝트의 API 키로 교체해주세요.
           authDomain: "manage-dee73.firebaseapp.com",
@@ -510,6 +510,7 @@
           messagingSenderId: "519840861970",
           appId: "1:519840861970:web:4e7dfc39cb112e8c8badcb"
         };
+
         // Firebase 초기화
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
@@ -713,6 +714,9 @@
                 const boxInput = parseInt(document.getElementById(`boxes-${category}`).value, 10) || 0;
                 const pieceInput = parseInt(document.getElementById(`pieces-${category}`).value, 10) || 0;
                 const matFullName = getMatName(category, matType);
+
+                console.log(`Category: ${category}, Mat Type: ${matType}, Mat Full Name: ${matFullName}`);
+
                 const boxSize = boxSizes[matFullName] || 1; // 매트 종류에 따른 박스 크기, 기본값 1
                 const quantity = (boxInput * boxSize) + pieceInput;
 
@@ -776,11 +780,27 @@
                     const { quantity, matFullName, color } = entryData[category];
                     if (quantity === 0) continue;
 
+                    if (!matFullName || !color) {
+                        console.error(`matFullName 또는 color가 정의되지 않았습니다. matFullName: ${matFullName}, color: ${color}`);
+                        continue;
+                    }
+
                     const stockRef = firebase.database().ref(`/stock/${matFullName}/${color}`);
                     const delta = type === "입고" ? quantity : -quantity;
 
+                    console.log('Updating stock for:', matFullName, color, 'with delta:', delta);
+
                     const promise = stockRef.transaction((currentQty) => {
                         return (currentQty || 0) + delta;
+                    }, (error, committed, snapshot) => {
+                        if (error) {
+                            console.error('Transaction failed abnormally!', error);
+                        } else if (!committed) {
+                            console.log('We aborted the transaction.');
+                        } else {
+                            console.log('Transaction committed successfully!');
+                            console.log('New quantity:', snapshot.val());
+                        }
                     });
                     stockUpdatePromises.push(promise);
                 }
@@ -887,7 +907,7 @@
                             stockMap[matFullName] = { "프렌치바닐라": 0, "솔리드그레이": 0, "베이지코튼": 0 };
                         }
                         for (let color in stockEntries[matFullName]) {
-                            const qty = stockEntries[matFullName][color];
+                            const qty = parseInt(stockEntries[matFullName][color], 10) || 0;
                             stockMap[matFullName][color] = qty;
                         }
                     }
