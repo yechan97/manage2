@@ -534,16 +534,16 @@
         const boxSizes = {
             "자이언트플러스": 4,
             "자이언트플러스_R": 4,
-            "자이언트플러스_0.5T": 4,
+            "자이언트플러스_05T": 4,
             "빅토리매트": 3,
             "빅토리매트_R": 3,
-            "빅토리매트_0.5T": 3
+            "빅토리매트_05T": 3
         };
 
         const matMapping = {
             "정상": "",
             "리퍼브": "_R",
-            "0.5T": "_0.5T"
+            "05T": "_05T"
         };
 
         // 현재 로그인한 사용자 이름 저장
@@ -554,16 +554,6 @@
         function normalizeMatFullName(matFullName) {
             // 공백만 언더스코어(_)로 대체
             return matFullName.replace(/\s+/g, '_');
-        }
-
-        // 키 인코딩 함수: 마침표를 쉼표로 대체
-        function encodeKey(key) {
-            return key.replace(/\./g, ',');
-        }
-
-        // 키 디코딩 함수: 쉼표를 마침표로 복원
-        function decodeKey(key) {
-            return key.replace(/,/g, '.');
         }
 
         document.addEventListener("DOMContentLoaded", () => {
@@ -706,7 +696,7 @@
             }
 
             // 각 구분별 박스와 장수 입력값 가져오기
-            const categories = ["정상", "리퍼브", "0.5T"];
+            const categories = ["정상", "리퍼브", "05T"];
             const entryData = {};
 
             let grandTotalQuantity = 0;
@@ -771,6 +761,7 @@
             try {
                 // 엔트리 업데이트
                 await firebase.database().ref().update(updates);
+                console.log("Entries updated successfully:", updates);
 
                 // 재고 업데이트 트랜잭션
                 const stockPromises = [];
@@ -778,27 +769,36 @@
                     const { quantity, matFullName, color } = entryData[category];
                     if (quantity === 0) continue;
 
-                    const stockPath = `/stock/${encodeKey(matFullName)}/${color}`;
-                    console.log("Stock Update Path:", stockPath); // 디버깅용 로그
+                    const stockPath = `/stock/${matFullName}/${color}`;
+                    console.log(`Updating stock at ${stockPath} by ${type === "입고" ? quantity : -quantity}`);
                     const stockRef = firebase.database().ref(stockPath);
                     const promise = stockRef.transaction(current => {
                         return (current || 0) + (type === "입고" ? quantity : -quantity);
+                    }, (error, committed, snapshot) => {
+                        if (error) {
+                            console.error(`Transaction failed for ${stockPath}:`, error);
+                        } else if (!committed) {
+                            console.warn(`Transaction not committed for ${stockPath}`);
+                        } else {
+                            console.log(`Transaction committed for ${stockPath}:`, snapshot.val());
+                        }
                     });
                     stockPromises.push(promise);
                 }
                 await Promise.all(stockPromises);
+                console.log("Stock updated successfully.");
 
                 // UI 업데이트
                 resetInputFields();
                 alert("데이터가 성공적으로 저장되었습니다.");
-                // 실시간 리스너가 자동으로 반영하므로 loadAdminData 호출 제거
             } catch (error) {
                 alert("데이터 저장 중 오류 발생: " + error.message);
+                console.error("Error updating entries or stock:", error);
             }
         }
 
         function resetInputFields() {
-            const categories = ["정상", "리퍼브", "0.5T"];
+            const categories = ["정상", "리퍼브", "05T"];
             for (let category of categories) {
                 document.getElementById(`boxes-${category}`).value = "";
                 document.getElementById(`pieces-${category}`).value = "";
@@ -809,7 +809,7 @@
                 categoryTotalDiv.innerHTML = `
                     <div class="category-total">정상: 0장</div>
                     <div class="category-total">리퍼브: 0장</div>
-                    <div class="category-total">0.5T: 0장</div>
+                    <div class="category-total">05T: 0장</div>
                     <div class="grand-total">총 수량: 0장</div>
                 `;
             }
@@ -882,19 +882,18 @@
 
             firebase.database().ref('stock').on('value', (snapshot) => {
                 const stockEntries = snapshot.val();
-                console.log("Stock Entries:", stockEntries); // 디버깅용 로그
+                console.log("Stock Entries Loaded:", stockEntries);
 
                 if (stockEntries) {
                     const stockMap = {};
 
                     // 모든 매트 이름과 색상에 대해 재고를 집계
-                    for (let encodedMatFullName in stockEntries) {
-                        const matFullName = decodeKey(encodedMatFullName);
+                    for (let matFullName in stockEntries) {
                         if (!stockMap[matFullName]) {
                             stockMap[matFullName] = { "프렌치바닐라": 0, "솔리드그레이": 0, "베이지코튼": 0 };
                         }
-                        for (let color in stockEntries[encodedMatFullName]) {
-                            const qty = stockEntries[encodedMatFullName][color];
+                        for (let color in stockEntries[matFullName]) {
+                            const qty = stockEntries[matFullName][color];
                             stockMap[matFullName][color] = qty;
                         }
                     }
@@ -927,6 +926,7 @@
                 }
             }, (error) => {
                 alert("재고 데이터 로드 중 오류 발생: " + error.message);
+                console.error("Error loading stock data:", error);
             });
 
             // 입출고 기록 테이블 로드
@@ -967,6 +967,7 @@
                     }
                 }, (error) => {
                     alert("입출고 기록 로드 중 오류 발생: " + error.message);
+                    console.error("Error loading entry records:", error);
                 });
         }
 
@@ -981,6 +982,7 @@
                     alert("입출고 기록이 초기화되었습니다.");
                 } catch (error) {
                     alert("입출고 기록 초기화 중 오류 발생: " + error.message);
+                    console.error("Error clearing entries:", error);
                 } finally {
                     // 로딩 인디케이터 숨기기
                     document.getElementById("loading-indicator").style.display = "none";
@@ -998,6 +1000,7 @@
                     alert("재고 내역이 초기화되었습니다.");
                 } catch (error) {
                     alert("재고 내역 초기화 중 오류 발생: " + error.message);
+                    console.error("Error clearing stock:", error);
                 } finally {
                     // 로딩 인디케이터 숨기기
                     document.getElementById("loading-indicator").style.display = "none";
@@ -1185,12 +1188,13 @@
                 })
                 .catch((error) => {
                     alert("입출고 기록 내보내기 중 오류 발생: " + error.message);
+                    console.error("Error exporting records:", error);
                 });
         }
 
         // 총 수량 계산 함수
         function calculateTotalQuantity() {
-            const categories = ["정상", "리퍼브", "0.5T"];
+            const categories = ["정상", "리퍼브", "05T"];
             let grandTotalQuantity = 0;
             const categoryTotals = {};
 
@@ -1221,7 +1225,7 @@
 
         // 이벤트 리스너 추가 함수
         function addEventListeners() {
-            const categories = ["정상", "리퍼브", "0.5T"];
+            const categories = ["정상", "리퍼브", "05T"];
             for (let category of categories) {
                 document.getElementById(`boxes-${category}`).addEventListener("input", calculateTotalQuantity);
                 document.getElementById(`pieces-${category}`).addEventListener("input", calculateTotalQuantity);
@@ -1258,28 +1262,25 @@
                     Object.values(entries).forEach(entry => {
                         let { matName, color, quantity, type } = entry;
 
-                        // matName을 키로 사용할 때 인코딩 적용
-                        const encodedMatName = encodeKey(matName);
-
-                        if (!stockMap[encodedMatName]) {
-                            stockMap[encodedMatName] = {};
+                        if (!stockMap[matName]) {
+                            stockMap[matName] = {};
                         }
-                        if (!stockMap[encodedMatName][color]) {
-                            stockMap[encodedMatName][color] = 0;
+                        if (!stockMap[matName][color]) {
+                            stockMap[matName][color] = 0;
                         }
 
                         if (type === "입고") {
-                            stockMap[encodedMatName][color] += quantity;
+                            stockMap[matName][color] += quantity;
                         } else if (type === "출고") {
-                            stockMap[encodedMatName][color] -= quantity;
+                            stockMap[matName][color] -= quantity;
                         }
                     });
 
                     // Firebase의 stock 노드를 업데이트
                     const updates = {};
-                    for (const encodedMat in stockMap) {
-                        for (const color in stockMap[encodedMat]) {
-                            updates[`/stock/${encodedMat}/${color}`] = stockMap[encodedMat][color];
+                    for (const mat in stockMap) {
+                        for (const color in stockMap[mat]) {
+                            updates[`/stock/${mat}/${color}`] = stockMap[mat][color];
                         }
                     }
 
@@ -1291,6 +1292,7 @@
                 })
                 .catch((error) => {
                     alert("재고 동기화 중 오류 발생: " + error.message);
+                    console.error("Error synchronizing stock:", error);
                 })
                 .finally(() => {
                     // 로딩 인디케이터 숨기기
@@ -1298,6 +1300,10 @@
                 });
         }
 
+        // 입력 필드 클릭 시 기본 값 제거
+        function clearValue(element) {
+            element.value = "";
+        }
     </script>
 </head>
 <body>
@@ -1370,9 +1376,9 @@
                         <input type="number" id="pieces-리퍼브" min="0" placeholder="낱장" onfocus="clearValue(this)">
                     </div>
                     <div class="category-entry">
-                        <label for="boxes-0.5T">0.5T:</label>
-                        <input type="number" id="boxes-0.5T" min="0" placeholder="박스" onfocus="clearValue(this)">
-                        <input type="number" id="pieces-0.5T" min="0" placeholder="낱장" onfocus="clearValue(this)">
+                        <label for="boxes-05T">05T:</label>
+                        <input type="number" id="boxes-05T" min="0" placeholder="박스" onfocus="clearValue(this)">
+                        <input type="number" id="pieces-05T" min="0" placeholder="낱장" onfocus="clearValue(this)">
                     </div>
                 </div>
 
@@ -1465,10 +1471,546 @@
         </div>
 
         <script>
-            // 입력 필드 클릭 시 기본 값 제거
-            function clearValue(element) {
-                element.value = "";
+            // Firebase 키 인코딩/디코딩 제거 (필요 없음)
+
+            // addEntry 함수 수정
+            async function addEntry(type) {
+                const matType = document.getElementById("mat-name").value;
+                const color = document.getElementById("mat-color").value;
+
+                // 매트 종류 및 색상 선택 확인
+                if (!matType || !color) {
+                    alert("매트 종류와 색상을 선택해주세요.");
+                    return;
+                }
+
+                // 각 구분별 박스와 장수 입력값 가져오기
+                const categories = ["정상", "리퍼브", "05T"];
+                const entryData = {};
+
+                let grandTotalQuantity = 0;
+                const categoryTotals = {};
+
+                for (let category of categories) {
+                    const boxInput = parseInt(document.getElementById(`boxes-${category}`).value, 10) || 0;
+                    const pieceInput = parseInt(document.getElementById(`pieces-${category}`).value, 10) || 0;
+                    const matFullName = getMatName(category, matType);
+                    const boxSize = boxSizes[matType] || 1; // 매트 종류에 따른 박스 크기, 기본값 1
+                    const quantity = (boxInput * boxSize) + pieceInput;
+
+                    entryData[category] = {
+                        boxes: boxInput,
+                        pieces: pieceInput,
+                        quantity: quantity,
+                        matFullName: matFullName
+                    };
+
+                    categoryTotals[category] = quantity;
+                    grandTotalQuantity += quantity;
+                }
+
+                // 총 수량이 0보다 커야 함
+                if (grandTotalQuantity <= 0) {
+                    alert("총 수량이 0보다 커야 합니다.");
+                    return;
+                }
+
+                // 입출고 타입 확인
+                if (!["입고", "출고"].includes(type)) {
+                    alert("올바르지 않은 입출고 타입입니다.");
+                    return;
+                }
+
+                // Firebase에 여러 구분에 대한 엔트리 추가
+                const entriesRef = firebase.database().ref('entries');
+                const updates = {};
+                const timestamp = Date.now();
+
+                for (let category of categories) {
+                    const { boxes, pieces, quantity, matFullName } = entryData[category];
+                    if (boxes === 0 && pieces === 0) continue; // 입력이 없으면 건너뜀
+
+                    const entry = { 
+                        name: currentUserName, 
+                        category: category, 
+                        matName: matFullName, 
+                        color, 
+                        quantity: quantity, 
+                        type, 
+                        notes: document.getElementById("notes").value.trim(),
+                        timestamp: timestamp,
+                        boxes: boxes,
+                        pieces: pieces
+                    };
+
+                    const newEntryKey = entriesRef.push().key;
+                    updates['/entries/' + newEntryKey] = entry;
+                }
+
+                try {
+                    // 엔트리 업데이트
+                    await firebase.database().ref().update(updates);
+                    console.log("Entries updated successfully:", updates);
+
+                    // 재고 업데이트 트랜잭션
+                    const stockPromises = [];
+                    for (let category of categories) {
+                        const { quantity, matFullName, color } = entryData[category];
+                        if (quantity === 0) continue;
+
+                        const stockPath = `/stock/${matFullName}/${color}`;
+                        console.log(`Updating stock at ${stockPath} by ${type === "입고" ? quantity : -quantity}`);
+                        const stockRef = firebase.database().ref(stockPath);
+                        const promise = stockRef.transaction(current => {
+                            return (current || 0) + (type === "입고" ? quantity : -quantity);
+                        }, (error, committed, snapshot) => {
+                            if (error) {
+                                console.error(`Transaction failed for ${stockPath}:`, error);
+                            } else if (!committed) {
+                                console.warn(`Transaction not committed for ${stockPath}`);
+                            } else {
+                                console.log(`Transaction committed for ${stockPath}:`, snapshot.val());
+                            }
+                        });
+                        stockPromises.push(promise);
+                    }
+                    await Promise.all(stockPromises);
+                    console.log("Stock updated successfully.");
+
+                    // UI 업데이트
+                    resetInputFields();
+                    alert("데이터가 성공적으로 저장되었습니다.");
+                } catch (error) {
+                    alert("데이터 저장 중 오류 발생: " + error.message);
+                    console.error("Error updating entries or stock:", error);
+                }
             }
+
+            // loadAdminData 함수 수정
+            function loadAdminData() {
+                const stockTableBody = document.getElementById("stock-table-body");
+                stockTableBody.innerHTML = "";
+
+                firebase.database().ref('stock').on('value', (snapshot) => {
+                    const stockEntries = snapshot.val();
+                    console.log("Stock Entries Loaded:", stockEntries);
+
+                    if (stockEntries) {
+                        const stockMap = {};
+
+                        // 모든 매트 이름과 색상에 대해 재고를 집계
+                        for (let matFullName in stockEntries) {
+                            if (!stockMap[matFullName]) {
+                                stockMap[matFullName] = { "프렌치바닐라": 0, "솔리드그레이": 0, "베이지코튼": 0 };
+                            }
+                            for (let color in stockEntries[matFullName]) {
+                                const qty = stockEntries[matFullName][color];
+                                stockMap[matFullName][color] = qty;
+                            }
+                        }
+
+                        const matTypes = Object.keys(stockMap);
+                        let rowsHTML = "";
+
+                        matTypes.forEach(mat => {
+                            const colors = stockMap[mat];
+                            let total = 0;
+                            let row = `<tr><td>${mat.replace(/_/g, ' ')}</td>`;
+                            ["프렌치바닐라", "솔리드그레이", "베이지코튼"].forEach(color => {
+                                const qty = colors[color] || 0;
+                                row += `<td>${qty}장</td>`;
+                                total += qty;
+                            });
+                            row += `<td class="total-cell">${total}장</td></tr>`;
+                            rowsHTML += row;
+                        });
+
+                        stockTableBody.innerHTML = rowsHTML;
+                    } else {
+                        // 재고 데이터가 없을 때 기본 값 표시
+                        const matTypes = ["자이언트플러스", "빅토리매트"];
+                        let rowsHTML = "";
+                        matTypes.forEach(mat => {
+                            rowsHTML += `<tr><td>${mat.replace(/_/g, ' ')}</td><td>0장</td><td>0장</td><td>0장</td><td class="total-cell">0장</td></tr>`;
+                        });
+                        stockTableBody.innerHTML = rowsHTML;
+                    }
+                }, (error) => {
+                    alert("재고 데이터 로드 중 오류 발생: " + error.message);
+                    console.error("Error loading stock data:", error);
+                });
+
+                // 입출고 기록 테이블 로드
+                loadEntryRecords();
+            }
+
+            function loadEntryRecords() {
+                const recordsTableBody = document.getElementById("admin-table-body");
+                recordsTableBody.innerHTML = "";
+
+                firebase.database().ref('entries')
+                    .on('value', (snapshot) => {
+                        recordsTableBody.innerHTML = "";
+                        const adminEntries = snapshot.val();
+                        if (adminEntries) {
+                            const entriesArray = Object.values(adminEntries);
+                            // 오래된 순으로 오름차순 정렬
+                            entriesArray.sort((a, b) => a.timestamp - b.timestamp);
+                            let recordsHTML = "";
+                            entriesArray.forEach(entry => {
+                                const formattedTime = formatTimestamp(entry.timestamp);
+                                recordsHTML += `
+                                    <tr>
+                                        <td>${entry.name}</td>
+                                        <td>${entry.category}</td>
+                                        <td>${entry.matName.replace(/_/g, ' ')}</td>
+                                        <td>${entry.color}</td>
+                                        <td>${entry.quantity}장</td>
+                                        <td>${entry.type}</td>
+                                        <td>${entry.notes}</td>
+                                        <td>${formattedTime}</td>
+                                    </tr>
+                                `;
+                            });
+                            recordsTableBody.innerHTML = recordsHTML;
+                        } else {
+                            recordsTableBody.innerHTML = "<tr><td colspan='8'>입출고 기록이 없습니다.</td></tr>";
+                        }
+                    }, (error) => {
+                        alert("입출고 기록 로드 중 오류 발생: " + error.message);
+                        console.error("Error loading entry records:", error);
+                    });
+            }
+
+            // 초기화 버튼을 두 개로 분리
+            async function clearEntries() {
+                if (confirm("입출고 기록을 초기화하시겠습니까?")) {
+                    // 로딩 인디케이터 표시
+                    document.getElementById("loading-indicator").style.display = "flex";
+                    try {
+                        // Realtime Database의 'entries' 노드 삭제
+                        await firebase.database().ref('entries').remove();
+                        alert("입출고 기록이 초기화되었습니다.");
+                    } catch (error) {
+                        alert("입출고 기록 초기화 중 오류 발생: " + error.message);
+                        console.error("Error clearing entries:", error);
+                    } finally {
+                        // 로딩 인디케이터 숨기기
+                        document.getElementById("loading-indicator").style.display = "none";
+                    }
+                }
+            }
+
+            async function clearStock() {
+                if (confirm("재고 내역을 초기화하시겠습니까?")) {
+                    // 로딩 인디케이터 표시
+                    document.getElementById("loading-indicator").style.display = "flex";
+                    try {
+                        // Realtime Database의 'stock' 노드 삭제
+                        await firebase.database().ref('stock').remove();
+                        alert("재고 내역이 초기화되었습니다.");
+                    } catch (error) {
+                        alert("재고 내역 초기화 중 오류 발생: " + error.message);
+                        console.error("Error clearing stock:", error);
+                    } finally {
+                        // 로딩 인디케이터 숨기기
+                        document.getElementById("loading-indicator").style.display = "none";
+                    }
+                }
+            }
+
+            // 엑셀 저장 함수: 재고 내역
+            function exportStock() {
+                const table = document.getElementById('stock-table');
+                const workbook = XLSX.utils.table_to_book(table, {sheet:"재고내역"});
+
+                // 워크시트 가져오기
+                const worksheet = workbook.Sheets["재고내역"];
+
+                // 헤더 스타일링: 첫 번째 행을 굵게(Bold)
+                const range = XLSX.utils.decode_range(worksheet['!ref']);
+                for(let C = range.s.c; C <= range.e.c; ++C) {
+                    const cell_address = {c: C, r: 0};
+                    const cell_ref = XLSX.utils.encode_cell(cell_address);
+                    if(!worksheet[cell_ref]) continue;
+                    if(!worksheet[cell_ref].s) worksheet[cell_ref].s = {};
+                    worksheet[cell_ref].s.font = { bold: true };
+                }
+
+                // 열 너비 설정
+                worksheet['!cols'] = [
+                    { wch: 20 }, // 매트 종류
+                    { wch: 20 }, // 프렌치바닐라
+                    { wch: 20 }, // 솔리드그레이
+                    { wch: 20 }, // 베이지코튼
+                    { wch: 10 }  // 합계
+                ];
+
+                // 수량과 합계에서 '장' 제거
+                for(let R = 1; R <= range.e.r; ++R) { // 첫 번째 행은 헤더이므로 1부터 시작
+                    // 프렌치바닐라 컬럼 (2번째 컬럼, 인덱스 1)
+                    const cellRefFrVanilla = XLSX.utils.encode_cell({c: 1, r: R});
+                    if(worksheet[cellRefFrVanilla] && typeof worksheet[cellRefFrVanilla].v === 'string') {
+                        const num = parseInt(worksheet[cellRefFrVanilla].v.replace('장', '').trim(), 10);
+                        if(!isNaN(num)) {
+                            worksheet[cellRefFrVanilla].v = num;
+                            worksheet[cellRefFrVanilla].t = 'n'; // 숫자 타입으로 설정
+                        }
+                    }
+
+                    // 솔리드그레이 컬럼 (3번째 컬럼, 인덱스 2)
+                    const cellRefSolidGray = XLSX.utils.encode_cell({c: 2, r: R});
+                    if(worksheet[cellRefSolidGray] && typeof worksheet[cellRefSolidGray].v === 'string') {
+                        const num = parseInt(worksheet[cellRefSolidGray].v.replace('장', '').trim(), 10);
+                        if(!isNaN(num)) {
+                            worksheet[cellRefSolidGray].v = num;
+                            worksheet[cellRefSolidGray].t = 'n'; // 숫자 타입으로 설정
+                        }
+                    }
+
+                    // 베이지코튼 컬럼 (4번째 컬럼, 인덱스 3)
+                    const cellRefBeigeCotton = XLSX.utils.encode_cell({c: 3, r: R});
+                    if(worksheet[cellRefBeigeCotton] && typeof worksheet[cellRefBeigeCotton].v === 'string') {
+                        const num = parseInt(worksheet[cellRefBeigeCotton].v.replace('장', '').trim(), 10);
+                        if(!isNaN(num)) {
+                            worksheet[cellRefBeigeCotton].v = num;
+                            worksheet[cellRefBeigeCotton].t = 'n'; // 숫자 타입으로 설정
+                        }
+                    }
+
+                    // 합계 컬럼 (5번째 컬럼, 인덱스 4)
+                    const cellRefTotal = XLSX.utils.encode_cell({c: 4, r: R});
+                    if(worksheet[cellRefTotal] && typeof worksheet[cellRefTotal].v === 'string') {
+                        const num = parseInt(worksheet[cellRefTotal].v.replace('장', '').trim(), 10);
+                        if(!isNaN(num)) {
+                            worksheet[cellRefTotal].v = num;
+                            worksheet[cellRefTotal].t = 'n'; // 숫자 타입으로 설정
+                        }
+                    }
+                }
+
+                // 워크북에 수정된 워크시트 다시 설정
+                workbook.Sheets["재고내역"] = worksheet;
+
+                // 워크북 저장
+                const date = new Date();
+                const formattedDate = `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2,'0')}${date.getDate().toString().padStart(2,'0')}`;
+                const filename = `${formattedDate}_재고내역.xlsx`;
+                XLSX.writeFile(workbook, filename);
+            }
+
+            // 엑셀 저장 함수: 입출고 기록
+            function exportRecords() {
+                // 먼저 데이터를 새 배열로 복사하고, 오름차순으로 정렬
+                firebase.database().ref('entries').once('value')
+                    .then((snapshot) => {
+                        const adminEntries = snapshot.val();
+                        let entriesArray = [];
+                        if (adminEntries) {
+                            entriesArray = Object.values(adminEntries);
+                            // 오래된 순으로 오름차순 정렬
+                            entriesArray.sort((a, b) => a.timestamp - b.timestamp);
+                        }
+
+                        // 임시 테이블 생성
+                        const tempTable = document.createElement("table");
+                        const thead = document.createElement("thead");
+                        thead.innerHTML = `
+                            <tr>
+                                <th>이름</th>
+                                <th>구분</th>
+                                <th>매트 종류</th>
+                                <th>색상</th>
+                                <th>수량</th>
+                                <th>입출고</th>
+                                <th>비고</th>
+                                <th>작성시간</th>
+                            </tr>
+                        `;
+                        tempTable.appendChild(thead);
+
+                        const tbody = document.createElement("tbody");
+                        entriesArray.forEach(entry => {
+                            const formattedTime = formatTimestamp(entry.timestamp);
+                            tbody.innerHTML += `
+                                <tr>
+                                    <td>${entry.name}</td>
+                                    <td>${entry.category}</td>
+                                    <td>${entry.matName.replace(/_/g, ' ')}</td>
+                                    <td>${entry.color}</td>
+                                    <td>${entry.quantity}장</td>
+                                    <td>${entry.type}</td>
+                                    <td>${entry.notes}</td>
+                                    <td>${formattedTime}</td>
+                                </tr>
+                            `;
+                        });
+                        tempTable.appendChild(tbody);
+
+                        // SheetJS를 사용하여 엑셀로 변환
+                        const workbook = XLSX.utils.table_to_book(tempTable, {sheet:"입출고기록"});
+
+                        // 워크시트 가져오기
+                        const worksheet = workbook.Sheets["입출고기록"];
+
+                        // 헤더 스타일링: 첫 번째 행을 굵게(Bold)
+                        const range = XLSX.utils.decode_range(worksheet['!ref']);
+                        for(let C = range.s.c; C <= range.e.c; ++C) {
+                            const cell_address = {c: C, r: 0};
+                            const cell_ref = XLSX.utils.encode_cell(cell_address);
+                            if(!worksheet[cell_ref]) continue;
+                            if(!worksheet[cell_ref].s) worksheet[cell_ref].s = {};
+                            worksheet[cell_ref].s.font = { bold: true };
+                        }
+
+                        // 열 너비 설정
+                        worksheet['!cols'] = [
+                            { wch: 15 }, // 이름
+                            { wch: 15 }, // 구분
+                            { wch: 20 }, // 매트 종류
+                            { wch: 15 }, // 색상
+                            { wch: 10 }, // 수량
+                            { wch: 10 }, // 입출고
+                            { wch: 25 }, // 비고
+                            { wch: 15 }  // 작성시간
+                        ];
+
+                        // 수량에서 '장' 제거
+                        for(let R = 1; R <= range.e.r; ++R) { // 첫 번째 행은 헤더이므로 1부터 시작
+                            // 수량 컬럼 (5번째 컬럼, 인덱스 4)
+                            const cellRefQty = XLSX.utils.encode_cell({c: 4, r: R});
+                            if(worksheet[cellRefQty] && typeof worksheet[cellRefQty].v === 'string') {
+                                const num = parseInt(worksheet[cellRefQty].v.replace('장', '').trim(), 10);
+                                if(!isNaN(num)) {
+                                    worksheet[cellRefQty].v = num;
+                                    worksheet[cellRefQty].t = 'n'; // 숫자 타입으로 설정
+                                }
+                            }
+                        }
+
+                        // 워크북에 수정된 워크시트 다시 설정
+                        workbook.Sheets["입출고기록"] = worksheet;
+
+                        // 워크북 저장
+                        const date = new Date();
+                        const formattedDate = `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2,'0')}${date.getDate().toString().padStart(2,'0')}`;
+                        const filename = `${formattedDate}_입출고기록.xlsx`;
+                        XLSX.writeFile(workbook, filename);
+                    })
+                    .catch((error) => {
+                        alert("입출고 기록 내보내기 중 오류 발생: " + error.message);
+                        console.error("Error exporting records:", error);
+                    });
+            }
+
+            // 총 수량 계산 함수
+            function calculateTotalQuantity() {
+                const categories = ["정상", "리퍼브", "05T"];
+                let grandTotalQuantity = 0;
+                const categoryTotals = {};
+
+                for (let category of categories) {
+                    const boxes = parseInt(document.getElementById(`boxes-${category}`).value, 10) || 0;
+                    const pieces = parseInt(document.getElementById(`pieces-${category}`).value, 10) || 0;
+                    const matType = document.getElementById("mat-name").value;
+                    if (!matType) continue; // 매트 종류가 선택되지 않았을 경우
+
+                    const boxSize = boxSizes[matType] || 1; // 매트 종류에 따른 박스 크기, 기본값 1
+                    const quantity = (boxes * boxSize) + pieces;
+                    categoryTotals[category] = quantity;
+                    grandTotalQuantity += quantity;
+                }
+
+                // UI 업데이트
+                const categoryTotalDiv = document.getElementById("category-totals");
+
+                // 기존 내용 제거
+                categoryTotalDiv.innerHTML = "";
+
+                // 새로운 카테고리별 총 수량 표시
+                for (let category of categories) {
+                    categoryTotalDiv.innerHTML += `<div class="category-total">${category}: ${categoryTotals[category]}장</div>`;
+                }
+                categoryTotalDiv.innerHTML += `<div class="grand-total">총 수량: ${grandTotalQuantity}장</div>`;
+            }
+
+            // 이벤트 리스너 추가 함수
+            function addEventListeners() {
+                const categories = ["정상", "리퍼브", "05T"];
+                for (let category of categories) {
+                    document.getElementById(`boxes-${category}`).addEventListener("input", calculateTotalQuantity);
+                    document.getElementById(`pieces-${category}`).addEventListener("input", calculateTotalQuantity);
+                }
+                document.getElementById("mat-name").addEventListener("change", calculateTotalQuantity);
+                document.getElementById("mat-color").addEventListener("change", calculateTotalQuantity);
+            }
+
+            // 재고 동기화 함수
+            function synchronizeStock() {
+                if (!isAdmin) {
+                    alert("재고 동기화는 관리자만 가능합니다.");
+                    return;
+                }
+
+                if (!confirm("입출고 기록을 바탕으로 재고를 동기화하시겠습니까? 이 작업은 기존 재고 데이터를 덮어씁니다.")) {
+                    return;
+                }
+
+                // 로딩 인디케이터 표시
+                document.getElementById("loading-indicator").style.display = "flex";
+
+                firebase.database().ref('entries').once('value')
+                    .then((snapshot) => {
+                        const entries = snapshot.val();
+                        if (!entries) {
+                            alert("입출고 기록이 없습니다. 동기화를 진행할 수 없습니다.");
+                            return;
+                        }
+
+                        const stockMap = {};
+
+                        // 모든 입출고 기록을 순회하여 재고 계산
+                        Object.values(entries).forEach(entry => {
+                            let { matName, color, quantity, type } = entry;
+
+                            if (!stockMap[matName]) {
+                                stockMap[matName] = {};
+                            }
+                            if (!stockMap[matName][color]) {
+                                stockMap[matName][color] = 0;
+                            }
+
+                            if (type === "입고") {
+                                stockMap[matName][color] += quantity;
+                            } else if (type === "출고") {
+                                stockMap[matName][color] -= quantity;
+                            }
+                        });
+
+                        // Firebase의 stock 노드를 업데이트
+                        const updates = {};
+                        for (const mat in stockMap) {
+                            for (const color in stockMap[mat]) {
+                                updates[`/stock/${mat}/${color}`] = stockMap[mat][color];
+                            }
+                        }
+
+                        return firebase.database().ref().update(updates);
+                    })
+                    .then(() => {
+                        alert("재고가 성공적으로 동기화되었습니다.");
+                        loadAdminData();
+                    })
+                    .catch((error) => {
+                        alert("재고 동기화 중 오류 발생: " + error.message);
+                        console.error("Error synchronizing stock:", error);
+                    })
+                    .finally(() => {
+                        // 로딩 인디케이터 숨기기
+                        document.getElementById("loading-indicator").style.display = "none";
+                    });
+            }
+
         </script>
     </div>
 </body>
