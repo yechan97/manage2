@@ -1212,12 +1212,21 @@
             let grandTotalQuantity = 0;
             const categoryTotals = {};
 
+            const matType = document.getElementById("mat-name").value;
+            if (!matType) {
+                // 매트 종류가 선택되지 않았을 경우 수량을 계산하지 않음
+                const categoryTotalDiv = document.getElementById("category-totals");
+                categoryTotalDiv.innerHTML = "";
+                categories.forEach(category => {
+                    categoryTotalDiv.innerHTML += `<div class="category-total">${category}: 0장</div>`;
+                });
+                categoryTotalDiv.innerHTML += `<div class="grand-total">총 수량: 0장</div>`;
+                return;
+            }
+
             for (let category of categories) {
                 const boxes = parseInt(document.getElementById(`boxes-${category}`).value, 10) || 0;
                 const pieces = parseInt(document.getElementById(`pieces-${category}`).value, 10) || 0;
-                const matType = document.getElementById("mat-name").value;
-                if (!matType) continue; // 매트 종류가 선택되지 않았을 경우
-
                 const matFullName = getMatName(category, matType);
                 const boxSize = boxSizes[matFullName] || 1; // 매트 종류에 따른 박스 크기, 기본값 1
                 const quantity = (boxes * boxSize) + pieces;
