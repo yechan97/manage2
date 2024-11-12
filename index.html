@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap">
     <!-- SheetJS 라이브러리 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- ExcelJS 라이브러리 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -1075,16 +1077,6 @@
             }
         }
 
-        // 엑셀 저장 함수: 재고 내역
-        function exportStock() {
-            // (기존 코드 동일)
-        }
-
-        // 엑셀 저장 함수: 입출고 기록
-        function exportRecords() {
-            // (기존 코드 동일)
-        }
-
         // 총 수량 계산 함수
         function calculateTotalQuantity() {
             const categories = Object.values(MAT_CATEGORIES);
@@ -1171,6 +1163,191 @@
         function clearValue(element) {
             element.value = "";
         }
+
+        // 엑셀 저장 함수: 재고 내역
+        async function exportStock() {
+            try {
+                const snapshot = await firebase.database().ref('stock').once('value');
+                const stockData = snapshot.val();
+
+                if (!stockData) {
+                    alert("내보낼 재고 데이터가 없습니다.");
+                    return;
+                }
+
+                // ExcelJS 워크북과 워크시트 생성
+                const workbook = new ExcelJS.Workbook();
+                const worksheet = workbook.addWorksheet("재고 내역");
+
+                // 헤더 행 추가
+                worksheet.addRow(["매트 종류", "프렌치바닐라", "솔리드그레이", "베이지코튼", "합계"]);
+
+                // 헤더 스타일 적용
+                worksheet.getRow(1).eachCell((cell) => {
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'FFA07A' } // Light Salmon
+                    };
+                    cell.font = {
+                        bold: true,
+                        color: { argb: 'FFFFFFFF' } // White
+                    };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    };
+                    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                });
+
+                // 데이터 행 추가 및 스타일 적용
+                for (let mat in stockData) {
+                    const colors = stockData[mat];
+                    const frenchVanilla = colors["프렌치바닐라"] || 0;
+                    const solidGray = colors["솔리드그레이"] || 0;
+                    const beigeCotton = colors["베이지코튼"] || 0;
+                    const total = frenchVanilla + solidGray + beigeCotton;
+
+                    const row = worksheet.addRow([mat, frenchVanilla, solidGray, beigeCotton, total]);
+
+                    row.eachCell((cell) => {
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' }
+                        };
+                        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                    });
+                }
+
+                // 열 너비 자동 조정
+                worksheet.columns.forEach(column => {
+                    let maxLength = 0;
+                    column.eachCell({ includeEmpty: true }, cell => {
+                        const cellValue = cell.value ? cell.value.toString() : "";
+                        if (cellValue.length > maxLength) {
+                            maxLength = cellValue.length;
+                        }
+                    });
+                    column.width = maxLength < 10 ? 10 : maxLength + 2;
+                });
+
+                // 엑셀 파일 다운로드
+                await workbook.xlsx.writeBuffer().then((buffer) => {
+                    const blob = new Blob([buffer], { type: "application/octet-stream" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = "재고_내역.xlsx";
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+
+            } catch (error) {
+                alert("재고 데이터를 가져오는 중 오류가 발생했습니다: " + error.message);
+                console.error("Error exporting stock:", error);
+            }
+        }
+
+        // 엑셀 저장 함수: 입출고 기록
+        async function exportRecords() {
+            try {
+                const snapshot = await firebase.database().ref('entries').once('value');
+                const entries = snapshot.val();
+
+                if (!entries) {
+                    alert("내보낼 입출고 기록이 없습니다.");
+                    return;
+                }
+
+                // ExcelJS 워크북과 워크시트 생성
+                const workbook = new ExcelJS.Workbook();
+                const worksheet = workbook.addWorksheet("입출고 기록");
+
+                // 헤더 행 추가
+                worksheet.addRow(["이름", "구분", "매트 종류", "색상", "수량", "입출고", "비고", "작성시간"]);
+
+                // 헤더 스타일 적용
+                worksheet.getRow(1).eachCell((cell) => {
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: '87CEFA' } // Light Sky Blue
+                    };
+                    cell.font = {
+                        bold: true,
+                        color: { argb: 'FFFFFFFF' } // White
+                    };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    };
+                    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                });
+
+                // 데이터 행 추가 및 스타일 적용
+                const entriesArray = Object.values(entries);
+                // 최신 순으로 내림차순 정렬
+                entriesArray.sort((a, b) => b.timestamp - a.timestamp);
+
+                entriesArray.forEach(entry => {
+                    const formattedTime = formatTimestamp(entry.timestamp);
+                    const row = worksheet.addRow([
+                        entry.name,
+                        entry.category,
+                        entry.matName,
+                        entry.color,
+                        `${entry.quantity}장`,
+                        entry.type,
+                        entry.notes,
+                        formattedTime
+                    ]);
+
+                    row.eachCell((cell) => {
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' }
+                        };
+                        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                    });
+                });
+
+                // 열 너비 자동 조정
+                worksheet.columns.forEach(column => {
+                    let maxLength = 0;
+                    column.eachCell({ includeEmpty: true }, cell => {
+                        const cellValue = cell.value ? cell.value.toString() : "";
+                        if (cellValue.length > maxLength) {
+                            maxLength = cellValue.length;
+                        }
+                    });
+                    column.width = maxLength < 10 ? 10 : maxLength + 2;
+                });
+
+                // 엑셀 파일 다운로드
+                await workbook.xlsx.writeBuffer().then((buffer) => {
+                    const blob = new Blob([buffer], { type: "application/octet-stream" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = "입출고_기록.xlsx";
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+
+            } catch (error) {
+                alert("입출고 기록을 가져오는 중 오류가 발생했습니다: " + error.message);
+                console.error("Error exporting records:", error);
+            }
+        }
+
     </script>
 </head>
 <body>
